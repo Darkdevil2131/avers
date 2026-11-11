@@ -1,4 +1,3 @@
-"""Context-aware summaries of reviewer-entered evidence. No truth probabilities."""
 import json
 from typing import Literal
 
