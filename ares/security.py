@@ -1,10 +1,7 @@
 import time
 from collections import deque
 from threading import Lock
-
 from starlette.responses import JSONResponse
-
-
 class BodyLimit:
     def __init__(self, app, limit=512_000):
         self.app, self.limit = app, limit
@@ -35,14 +32,11 @@ class BodyLimit:
             return await receive()
 
         await self.app(scope, buffered, send)
-
-
 class RateLimit:
     def __init__(self, count=60, seconds=60):
         self.count, self.seconds = count, seconds
         self.requests = {}
         self.lock = Lock()
-
     def allow(self, identity):
         with self.lock:
             now = time.monotonic()
