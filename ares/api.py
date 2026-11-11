@@ -68,12 +68,15 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             "img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'"
         )
         return response
-    def authenticate(authorization: str = Header(default="")):
+
+    async def authenticate(authorization: str = Header(default="")):
         scheme, _, token = authorization.partition(" ")
         digest = hashlib.sha256(token.encode()).digest()
         if scheme.lower() == "bearer":
             for user, expected in digests.items():
                 if secrets.compare_digest(digest, expected):
+                    from .postgres import PRINCIPAL
+                    PRINCIPAL.set(user)
                     return user
         raise HTTPException(401, "Valid bearer credentials required")
     def limited(user=Depends(authenticate)):
@@ -85,7 +88,7 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
         if row is None:
             raise HTTPException(404, "Run not found")
         return row
-     @app.get("/health")
+    @app.get("/health")
     def health():
         with storage.connect() as db:
             db.execute("SELECT 1").fetchone()
@@ -128,6 +131,8 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
         with storage.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             storage.authorize(db, project_id, user, write=True)
+            if getattr(db,'is_postgres',False) and idempotency_key:
+                db.execute("SELECT pg_advisory_xact_lock(hashtext(?))",(project_id+':'+idempotency_key,))
             existing = db.execute("SELECT run_id FROM run_state WHERE project_id=? AND request_key=?",
                                   (project_id, idempotency_key)).fetchone() if idempotency_key else None
             if existing:
@@ -339,7 +344,7 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             db.execute("INSERT INTO feedback(project_id,run_id,source_id,relevant,actor,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(project_id,run_id,source_id,actor) DO UPDATE SET relevant=excluded.relevant,created_at=excluded.created_at",(project_id,run_id,body.source_id,int(body.relevant),user,now()))
             storage.audit(db,project_id,user,"relevance_feedback",{"run_id":run_id,**body.model_dump()})
             return {"status":"saved","learning":"Future similar queries can use reviewed relevance feedback","truth_updated":False}
-     @app.get("/projects/{project_id}/memory")
+    @app.get("/projects/{project_id}/memory")
     def memory(project_id: str, user=Depends(authenticate)):
         with storage.connect() as db:
             storage.authorize(db,project_id,user)
@@ -372,5 +377,5 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
     return app
 def app_factory():
     credentials = json.loads(os.environ.get("ARES_CREDENTIALS", "{}"))
-    return create_app(Path(os.environ.get("ARES_DATABASE", "state/ares.db")), credentials,
+    return create_app(os.environ.get("ARES_DATABASE", "state/ares.db"), credentials,
                       auto_process=os.environ.get("ARES_QUEUE_MODE", "inline") == "inline")

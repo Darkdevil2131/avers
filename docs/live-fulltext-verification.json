@@ -1,0 +1,24 @@
+{
+  "checked_at": "2026-11-11T10:09:16.571407+00:00",
+  "checks": [
+    {
+      "pmcid": "PMC4383902",
+      "status": "passed",
+      "provider": "europepmc_fulltext",
+      "license": "https://creativecommons.org/licenses/by/4.0/",
+      "characters": 19755,
+      "locations": 55,
+      "original_sha256": "d221f54c277f5d97b718b1e42a0ecc693180997a08cf57f8afd1eb950f19d712"
+    },
+    {
+      "pmcid": "PMC5753258",
+      "status": "passed",
+      "provider": "ncbi_bioc_fulltext",
+      "license": "CC BY (NCBI BioC license metadata)",
+      "characters": 23408,
+      "locations": 53,
+      "original_sha256": "c72d4d8e06d55ce096e660a3822b1743c5de3697d04146ba358b039aeec1518d"
+    }
+  ],
+  "passed": true
+}

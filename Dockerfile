@@ -11,6 +11,8 @@ RUN pip install --no-cache-dir -r requirements.lock && useradd --uid 10001 --cre
 COPY ares/ ./ares/
 COPY scripts/ ./scripts/
 COPY requirements-reasoner.txt ./
+ARG WITH_REASONER=0
+RUN if [ "$WITH_REASONER" = "1" ]; then pip install --no-cache-dir -r requirements-reasoner.txt; fi
 ENV ORT_DISABLE_TELEMETRY=1 HF_HUB_DISABLE_TELEMETRY=1 DO_NOT_TRACK=1
 COPY --from=frontend /build/ares/static ./ares/static
 RUN mkdir state && chown ares:ares state

@@ -35,3 +35,28 @@ def parse_jats(raw: bytes, pmcid: str):
     return {'title':title,'text':'\n\n'.join(chunks),'url':f'https://europepmc.org/articles/{pmcid}',
             'study_id':doi or pmcid,'license_status':license_url,'origin':'europepmc_fulltext',
             'document':{'original_sha256':hashlib.sha256(raw).hexdigest(),'original_xml_base64':base64.b64encode(raw).decode('ascii'),'locations':locations,'references':list(dict.fromkeys(refs))[:20], 'license':license_url}}
+
+def parse_bioc(raw: bytes, pmcid: str):
+    import json
+    if len(raw)>4_000_000:raise ValueError('BioC exceeds 4 MB budget')
+    collections=json.loads(raw)
+    if not isinstance(collections,list):raise ValueError('Unexpected BioC collection')
+    documents=[d for collection in collections for d in collection.get('documents',[]) if d.get('id')==pmcid]
+    if len(documents)!=1:raise ValueError('BioC document identity mismatch')
+    document=documents[0]
+    license_name=document.get('infons',{}).get('license','').strip().upper()
+    if license_name not in {'CC BY','CC BY-SA','CC0'}:raise ValueError('Unsupported BioC reuse license')
+    chunks=[];locations=[];offset=0;title=pmcid;doi=None
+    for passage in document.get('passages',[]):
+        info=passage.get('infons',{});value=passage.get('text','').strip()
+        if not isinstance(value,str):raise ValueError('Invalid BioC text')
+        if info.get('type')=='front':title=value or title
+        doi=doi or info.get('article-id_doi')
+        if not value or str(info.get('section_type','')).upper() in {'REF','REFERENCES'}:continue
+        if offset+len(value)>250000:raise ValueError('Article text budget exceeded')
+        chunks.append(value);locations.append({'kind':info.get('type','passage'),'section':info.get('section_type'),'source_offset':passage.get('offset'),'start':offset,'end':offset+len(value)})
+        offset+=len(value)+2
+    if not chunks:raise ValueError('No BioC text passages')
+    return {'title':title[:500],'text':'\n\n'.join(chunks),'url':f'https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/',
+            'study_id':doi or pmcid,'license_status':license_name+' (NCBI BioC license metadata)','origin':'ncbi_bioc_fulltext',
+            'document':{'original_sha256':hashlib.sha256(raw).hexdigest(),'original_format':'bioc_json','original_content_base64':base64.b64encode(raw).decode('ascii'),'license':license_name,'locations':locations,'references':[]}}

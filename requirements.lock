@@ -75,6 +75,10 @@ pluggy==1.7.0
     # via pytest
 protobuf==7.36.2
     # via onnxruntime
+psycopg==3.3.3
+    # via -r requirements.in
+psycopg-binary==3.3.3
+    # via psycopg
 py-rust-stemmers==0.1.8
     # via fastembed
 pydantic==2.13.4
@@ -104,6 +108,7 @@ typing-extensions==4.16.0
     #   anyio
     #   fastapi
     #   huggingface-hub
+    #   psycopg
     #   pydantic
     #   pydantic-core
     #   starlette

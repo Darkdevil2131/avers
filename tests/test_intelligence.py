@@ -94,3 +94,14 @@ def test_original_xml_is_retained_with_matching_hash():
     doc=parse_jats(XML,'PMC123')['document']
     raw=base64.b64decode(doc['original_xml_base64'])
     assert raw==XML and hashlib.sha256(raw).hexdigest()==doc['original_sha256']
+
+def test_bioc_requires_matching_identity_and_license():
+    from ares.documents import parse_bioc
+    import base64,hashlib
+    data=[{'documents':[{'id':'PMC1','infons':{'license':'CC BY'},'passages':[{'offset':0,'infons':{'type':'paragraph','section_type':'RESULTS'},'text':'Coating adhesion decreased under high humidity.'}]}]}]
+    raw=json.dumps(data).encode();doc=parse_bioc(raw,'PMC1')
+    assert doc['text']=='Coating adhesion decreased under high humidity.'
+    assert base64.b64decode(doc['document']['original_content_base64'])==raw
+    with pytest.raises(ValueError):parse_bioc(raw,'PMC2')
+    data[0]['documents'][0]['infons']['license']='All rights reserved'
+    with pytest.raises(ValueError):parse_bioc(json.dumps(data).encode(),'PMC1')

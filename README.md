@@ -1,5 +1,7 @@
 # ARES / Noesis
-A working evidence-first research workspace built from scratch. React and Three.js provide the browser interface; FastAPI and SQLite run the authenticated research workflow.
+
+A working evidence-first research workspace built from scratch. React and Three.js provide the browser interface; FastAPI and SQLite or PostgreSQL run the authenticated research workflow.
+
 ## Working features
 - Named-user bearer authentication and project owner/editor/viewer access.
 - Source snapshots, license metadata, SHA-256 provenance, exact passage offsets, and append-only source reviews.
@@ -46,7 +48,9 @@ The newer retrieval path includes real dense embeddings, reciprocal-rank fusion,
 export ARES_REASONER_MODEL="$PWD/state/reasoner/qwen2.5-1.5b-instruct-q4_k_m.gguf"
 ```
 These commands use CPU, RAM and disk on the host where they run. Keep weights under state/ and never commit them. Missing models result in explicitly reported fallback modes. The small local model is fallible: generated answers must be exact extracts to appear as report text, while hypotheses are clearly unvalidated proposals.
-The collector can follow permitted article references up to depth one/four full-text documents. Only explicitly recognized reuse licenses are ingested. Live full-text access was blocked by a proxy 403 in this environment; fixture tests are not a substitute for live verification.
+
+The collector can follow permitted article references up to depth one/four full-text documents. Only explicitly recognized reuse licenses are ingested. Live retrieval of two licensed articles, original-content hashes, and passage locations passed on GitHub Actions. Europe PMC JATS has an approved NCBI BioC fallback. See docs/live-fulltext-verification.json.
+
 The coordinator chooses a primary search when project evidence is absent, counterevidence search when matching passages exist, and a broader search when fewer than two records return. This is an explicit bounded policy. It does not establish that agents understand science.
 Every report creates pending memory. Owners can approve/reject records and mark cited sources relevant/not relevant. Similar future queries can use that relevance feedback; the system does not train on its own responses as ground truth.
 Reproducible model smoke checks after preparation:
@@ -55,3 +59,9 @@ PYTHONPATH=. .venv/bin/python scripts/evaluate_retrieval.py
 PYTHONPATH=. .venv/bin/python scripts/smoke_local.py
 ```
 See docs/ENGINEERING_PROGRESS.md for measured results, observed model failure, and outstanding work. The full master design and public production deployment remain incomplete.
+
+## Verified infrastructure update
+
+PostgreSQL now enforces project isolation using row-level security and separate application, worker, and migration roles. CI verifies unauthorized reads/writes, concurrent tenant reads, and API report creation against PostgreSQL 16. Container build/start and live full-text checks pass. See [deployment instructions](docs/DEPLOYMENT.md).
+
+SciFact development evaluation covers 27 claims over 1,000 documents: retrieval recall@8 was 100%, first-candidate rationale agreement 66.7%, and candidate rationale precision 33.3%. This restricted development result is not proof of scientific reliability. The second evaluation was interrupted before its result was persisted and is not counted. Public deployment and expert scientific validation remain incomplete.

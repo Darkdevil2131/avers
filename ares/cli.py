@@ -11,13 +11,15 @@ def main():
     parser.add_argument("command", choices=["worker", "backup", "verify-backup"])
     parser.add_argument("--file", type=Path)
     args = parser.parse_args()
-    path = Path(os.environ.get("ARES_DATABASE", "state/ares.db"))
+    path = os.environ.get("ARES_WORKER_DATABASE",os.environ.get("ARES_DATABASE", "state/ares.db"))
     if args.command == "worker":
         engine = ResearchEngine(Database(path), EuropePMC())
         while True:
             if not engine.run_once():
                 time.sleep(1)
     else:
+        if path.startswith(("postgresql://","postgres://")):
+            parser.error("Use pg_dump/pg_restore with the host backup operator for PostgreSQL")
         if args.file is None:
             parser.error("--file is required")
         if args.command == "backup":

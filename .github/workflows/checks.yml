@@ -21,3 +21,86 @@ jobs:
       - run: python -m pytest -q
       - run: npm ci && npm test && npm run build
         working-directory: web
+  postgres:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: fixture_admin_only
+          POSTGRES_DB: ares_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.lock
+      - name: Migrate disposable database
+        env:
+          ARES_ADMIN_DATABASE: postgresql://postgres:fixture_admin_only@localhost:5432/ares_test
+        run: |
+          python scripts/migrate_postgres.py
+          python - <<'PY'
+          import os,psycopg
+          with psycopg.connect(os.environ['ARES_ADMIN_DATABASE']) as db:
+              db.execute("ALTER ROLE ares_app PASSWORD 'fixture_runtime_only'")
+          PY
+      - name: Verify database-enforced isolation
+        env:
+          ARES_TEST_POSTGRES: postgresql://ares_app:fixture_runtime_only@localhost:5432/ares_test
+        run: python -m pytest tests/test_postgres.py -v
+      - name: Restore PostgreSQL backup and verify retained isolation
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$PG_CONTAINER" pg_dump -U postgres ares_test > /tmp/ares-backup.sql
+          docker exec "$PG_CONTAINER" createdb -U postgres ares_restore
+          docker exec -i "$PG_CONTAINER" psql -U postgres -d ares_restore -v ON_ERROR_STOP=1 < /tmp/ares-backup.sql
+          python - <<'PYTHON'
+          import psycopg
+          with psycopg.connect('postgresql://ares_app:fixture_runtime_only@localhost:5432/ares_restore') as db:
+              db.execute("SELECT set_config('ares.user','alice',true)")
+              assert db.execute('SELECT count(*) FROM sources').fetchone()[0] == 1
+              assert db.execute('SELECT count(*) FROM reports').fetchone()[0] == 1
+              alice_sources = db.execute('SELECT id FROM sources').fetchall()
+              db.execute("SELECT set_config('ares.user','charlie',true)")
+              assert db.execute('SELECT count(*) FROM sources').fetchone()[0] == 1
+              assert db.execute('SELECT count(*) FROM reports').fetchone()[0] == 0
+              assert db.execute('SELECT id FROM sources').fetchall() != alice_sources
+          print('Restored source/report data and tenant isolation verified')
+          PYTHON
+  live-fulltext:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install defusedxml==0.7.1
+      - name: Check licensed full-text retrieval and provenance
+        run: PYTHONPATH=. python scripts/live_fulltext_check.py
+  container:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build non-root application image
+        run: docker build -t ares-check .
+      - name: Check application starts without external services
+        run: |
+          docker run -d --name ares-check -p 127.0.0.1:8000:8000 -e 'ARES_CREDENTIALS={"fixture":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}' ares-check
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:8000/health; then exit 0; fi
+            sleep 1
+          done
+          docker logs ares-check
+          exit 1
