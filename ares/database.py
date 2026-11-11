@@ -1,4 +1,3 @@
-"""Transactional project storage and immutable provenance."""
 import hashlib
 import json
 import re
