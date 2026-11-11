@@ -1,4 +1,3 @@
-"""Real dense embeddings + lexical retrieval, combined by reciprocal rank fusion."""
 import hashlib
 import json
 import os
