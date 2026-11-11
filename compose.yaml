@@ -1,0 +1,60 @@
+# Run only on an existing authorized host. This file provisions no cloud resources.
+services:
+  database:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ares
+      POSTGRES_PASSWORD: ${ARES_DB_ADMIN_PASSWORD:?Set a random administrator password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres -d ares]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [database]
+  migrate:
+    build: .
+    command: [sh, -c, 'python scripts/migrate_postgres.py && python scripts/configure_postgres_roles.py']
+    environment:
+      ARES_ADMIN_DATABASE: ${ARES_ADMIN_DATABASE:?Set the administrator DSN for the database service}
+      ARES_DB_APP_PASSWORD: ${ARES_DB_APP_PASSWORD:?Set a separate application password}
+      ARES_DB_WORKER_PASSWORD: ${ARES_DB_WORKER_PASSWORD:?Set a separate worker password}
+    depends_on:
+      database: {condition: service_healthy}
+    networks: [database]
+  api:
+    build: .
+    environment:
+      ARES_DATABASE: ${ARES_APP_DATABASE:?Set the ares_app DSN}
+      ARES_CREDENTIALS: ${ARES_CREDENTIALS:?Configure distinct user tokens}
+      ARES_QUEUE_MODE: db
+    volumes: [model-data:/app/state]
+    ports: ['127.0.0.1:8000:8000']
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    networks: [database]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+  worker:
+    build: .
+    command: [python, -m, ares.cli, worker]
+    environment:
+      ARES_WORKER_DATABASE: ${ARES_WORKER_DATABASE:?Set the ares_worker DSN}
+      ARES_REASONER_MODEL: ${ARES_REASONER_MODEL:-}
+    volumes: [model-data:/app/state]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    networks: [database, outbound]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+networks:
+  database: {internal: true}
+  outbound: {}
+volumes:
+  postgres-data: {}
+  model-data: {}

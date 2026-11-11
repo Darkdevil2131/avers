@@ -8,7 +8,7 @@ pytestmark=pytest.mark.skipif(not os.environ.get('ARES_TEST_POSTGRES'),reason='D
 def test_database_rls_and_research_end_to_end():
     from ares.api import create_app
     from ares.postgres import PRINCIPAL
-    app=create_app(os.environ['ARES_TEST_POSTGRES'],{'alice':'a'*40,'bob':'b'*40})
+    app=create_app(os.environ['ARES_TEST_POSTGRES'],{'alice':'a'*40,'bob':'b'*40,'charlie':'c'*40})
     alice=TestClient(app,headers={'Authorization':'Bearer '+'a'*40})
     bob=TestClient(app,headers={'Authorization':'Bearer '+'b'*40})
     p=alice.post('/projects',json={'name':'Alice isolated research'}).json()['id']
@@ -41,3 +41,17 @@ def test_database_rls_and_research_end_to_end():
     assert bob.post(f'/projects/{p}/runs',json={'question':'Can a viewer write a run?'}).status_code==404
     assert bob.get(f"/projects/{p}/runs/{r['id']}/report").status_code==200
     assert bob.get(f'/projects/{p}/audit').status_code==404
+
+    charlie=TestClient(app,headers={'Authorization':'Bearer '+'c'*40})
+    other=charlie.post('/projects',json={'name':'Charlie isolated research'}).json()['id']
+    secret=charlie.post(f'/projects/{other}/sources',json={'url':'https://example.org/other','text':'Separate tenant source.','license_status':'synthetic fixture'}).json()['id']
+    from concurrent.futures import ThreadPoolExecutor
+    def unscoped_read(user):
+        token=PRINCIPAL.set(user)
+        try:
+            with app.state.storage.connect() as db:return {r['id'] for r in db.execute('SELECT id FROM sources')}
+        finally:PRINCIPAL.reset(token)
+    users=['alice','charlie']*16
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        rows=list(pool.map(unscoped_read,users))
+    for user,ids in zip(users,rows):assert ids==({s['id']} if user=='alice' else {secret})

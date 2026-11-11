@@ -6,11 +6,11 @@ provider=EuropePMC();results=[]
 for pmcid in ['PMC4383902','PMC5753258']:
     try:
         document=provider.fulltext(pmcid)
-        metadata=document['document'];raw=base64.b64decode(metadata['original_xml_base64'])
+        metadata=document['document'];raw=base64.b64decode(metadata.get('original_xml_base64') or metadata['original_content_base64'])
         assert hashlib.sha256(raw).hexdigest()==metadata['original_sha256']
         assert len(document['text'])>1000
         for loc in metadata['locations']:assert document['text'][loc['start']:loc['end']]
-        results.append({'pmcid':pmcid,'status':'passed','license':document['license_status'],'characters':len(document['text']),'locations':len(metadata['locations']),'original_sha256':metadata['original_sha256']})
+        results.append({'pmcid':pmcid,'status':'passed','provider':document['origin'],'license':document['license_status'],'characters':len(document['text']),'locations':len(metadata['locations']),'original_sha256':metadata['original_sha256']})
     except Exception as exc:
         results.append({'pmcid':pmcid,'status':'failed','error':str(exc),'cause':str(exc.__cause__)[:200]})
 record={'checked_at':datetime.now(timezone.utc).isoformat(),'checks':results,'passed':all(x['status']=='passed' for x in results)}

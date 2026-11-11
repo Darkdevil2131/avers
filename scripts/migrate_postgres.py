@@ -20,7 +20,9 @@ def migrate(dsn):
         db.execute('''DO $$ BEGIN
           IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='ares_app') THEN CREATE ROLE ares_app LOGIN NOSUPERUSER NOBYPASSRLS; END IF;
           IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='ares_worker') THEN CREATE ROLE ares_worker LOGIN NOSUPERUSER NOBYPASSRLS; END IF;
-          END $$;''')
+          END $$;
+          ALTER ROLE ares_app NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION;
+          ALTER ROLE ares_worker NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION;''')
         db.execute(schema())
         db.execute('''CREATE OR REPLACE FUNCTION ares_can_read(pid text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $$
           SELECT EXISTS(SELECT 1 FROM memberships WHERE project_id=pid AND username=current_setting('ares.user',true))
@@ -34,8 +36,8 @@ def migrate(dsn):
           GRANT EXECUTE ON FUNCTION ares_can_read(text),ares_can_write(text),ares_is_owner(text) TO ares_app;
           REVOKE CREATE ON SCHEMA public FROM PUBLIC;
           GRANT USAGE ON SCHEMA public TO ares_app,ares_worker;
-          GRANT SELECT,INSERT,UPDATE ON ALL TABLES IN SCHEMA public TO ares_app,ares_worker;
-          GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA public TO ares_app,ares_worker;
+          GRANT SELECT,INSERT,UPDATE ON schema_versions,projects,memberships,sources,runs,passages,run_state,audit_events,embeddings,claims,hypotheses,research_memory,feedback,source_details,source_reviews,documents,reports,run_events,evidence_links TO ares_app,ares_worker;
+          GRANT USAGE,SELECT ON source_reviews_id_seq,run_events_id_seq,audit_events_id_seq,feedback_id_seq TO ares_app,ares_worker;
           CREATE INDEX IF NOT EXISTS passages_text_gin ON passages USING gin(to_tsvector('english',text));
           CREATE INDEX IF NOT EXISTS passages_project_idx ON passages(project_id);
           CREATE INDEX IF NOT EXISTS sources_project_idx ON sources(project_id);

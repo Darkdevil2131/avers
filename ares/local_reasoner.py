@@ -14,7 +14,7 @@ SCHEMA={"type":"object","properties":{
 def suggest(question,citations):
     path=os.environ.get('ARES_REASONER_MODEL')
     if not path or not Path(path).is_file():return {'status':'unavailable','reason':'No local reasoning model configured','proposals':[]}
-    evidence=[{'citation':c['label'],'text':c['quote'][:900]} for c in citations if c.get('origin')!='europepmc_metadata'][:3]
+    evidence=[{'citation':c['label'],'text':c['quote'][:900]} for c in citations if not c.get('origin','').endswith('_metadata')][:3]
     if not evidence:return {'status':'abstained','reason':'No substantive source passages available','proposals':[]}
     environment={k:v for k,v in os.environ.items() if k in {'PATH','LD_LIBRARY_PATH','PYTHONPATH','SYSTEMROOT'}}
     environment.update({'ORT_DISABLE_TELEMETRY':'1','HF_HUB_DISABLE_TELEMETRY':'1','DO_NOT_TRACK':'1'})

@@ -23,12 +23,16 @@ def plan(question):
 def extract(citations,question):
     """Extract candidates verbatim; no generated claims or guessed study attributes."""
     findings=[];q=terms(question)
+    seen=set()
     for citation in citations:
-        if citation.get('origin')=='europepmc_metadata':continue
+        if citation.get('origin','').endswith('_metadata'):continue
         text=citation['quote']
-        for match in re.finditer(r'[^.!?\n]+(?:[.!?]|$)',text):
+        for match in re.finditer(r'.+?(?:(?<=[.!?])(?=\s+[A-Z])|\n|$)',text,flags=re.S):
             value=match.group().strip()
-            if len(value)<30 or not (terms(value)&q) or not DIRECTION.search(value):continue
+            if len(value)<30 or not (terms(value)&q):continue
+            identity=(citation['source_id'],value)
+            if identity in seen:continue
+            seen.add(identity)
             start=citation['start_offset']+match.start()+len(match.group())-len(match.group().lstrip())
             numbers=[m.group().strip() for m in NUMBER.finditer(value)]
             design=next((d for d in ['randomized','observational','retrospective','in vitro','simulation','cohort','systematic review'] if d in value.lower()),None)
@@ -36,8 +40,19 @@ def extract(citations,question):
                              'start_offset':start,'end_offset':start+len(value),'measurements':numbers,
                              'study_design':design,'context_verified':False,'method':'extractive-pattern-v1',
                              'status':'candidate','limitations':['Sentence-level extraction; study context and scientific interpretation require review']})
-            if len(findings)>=24:return findings
-    return findings
+            if len(findings)>=80:break
+    if not findings:return []
+    try:
+        from .retrieval import DENSE
+        scores=DENSE.rerank(question,[f['statement'] for f in findings])
+        for finding,score in zip(findings,scores):
+            finding['sentence_relevance_score']=float(score)
+            finding['method']='sentence-reranker-v1'
+        findings.sort(key=lambda f:-f['sentence_relevance_score'])
+    except (ImportError,OSError,ValueError,RuntimeError):
+        findings=[f for f in findings if DIRECTION.search(f['statement'])]
+    # Keep a small review queue; scores measure relevance, never entailment/truth.
+    return findings[:3]
 
 def critique(findings,citations):
     pairs=[]

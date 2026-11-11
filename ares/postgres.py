@@ -36,7 +36,12 @@ class PostgresDatabase(SQLiteDatabase):
     def __init__(self,dsn):
         self.dsn=dsn
         # Schema must be provisioned by a separate administrative migration command.
-        with self.connect() as db:db.execute('SELECT version FROM schema_versions LIMIT 1').fetchone()
+        with self.connect() as db:
+            role=db.execute("SELECT rolsuper,rolbypassrls FROM pg_roles WHERE rolname=current_user").fetchone()
+            owns=db.execute("SELECT count(*) FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner WHERE c.relname='sources' AND r.rolname=current_user").fetchone()[0]
+            if role['rolsuper'] or role['rolbypassrls'] or owns:
+                raise ValueError('Runtime database role must not own tables or bypass row-level security')
+            db.execute('SELECT version FROM schema_versions LIMIT 1').fetchone()
     @contextmanager
     def connect(self):
         import psycopg

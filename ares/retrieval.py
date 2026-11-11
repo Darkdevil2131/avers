@@ -6,6 +6,7 @@ from pathlib import Path
 import threading
 
 MODEL='sentence-transformers/all-MiniLM-L6-v2'
+MAX_PASSAGES=10000
 
 class DenseIndex:
     def __init__(self):
@@ -54,10 +55,10 @@ def hybrid_search(storage,db,project_id,question,limit=8):
       coalesce((SELECT max(id) FROM source_reviews WHERE source_id=s.id),0) AS review_version
       FROM passages p JOIN sources s ON s.id=p.source_id LEFT JOIN source_details d ON d.source_id=s.id
       WHERE p.project_id=? AND coalesce((SELECT status FROM source_reviews WHERE source_id=s.id ORDER BY id DESC LIMIT 1),'active')='active'
-      ORDER BY p.id LIMIT 2001''',(project_id,))]
+      ORDER BY p.id LIMIT 10001''',(project_id,))]
     if not rows:return [],{'mode':'hybrid','indexed_passages':0,'dense_available':False}
-    if len(rows)>2000:
-        return lexical[:limit],{'mode':'lexical','reason':'Dense corpus limit exceeded (2000 passages)','dense_available':False}
+    if len(rows)>MAX_PASSAGES:
+        return lexical[:limit],{'mode':'lexical','reason':'Dense corpus limit exceeded (10000 passages)','dense_available':False}
     try:
         DENSE.load()
         cache_model=MODEL+"@"+DENSE.artifact_hash

@@ -1,0 +1,379 @@
+{
+  "dataset": "SciFact development split restricted to independently preselected 1000-document corpus",
+  "source": "https://github.com/allenai/scifact",
+  "license": "https://github.com/allenai/scifact/blob/master/LICENSE.md",
+  "archive_sha256": "11c621288d41ac144d29b13b0f8503b3820b7d6e8b1f6ff24dff335c196d76be",
+  "document_seed": 20261111,
+  "query_seed": 42,
+  "documents": 1000,
+  "passages": 2081,
+  "queries": 27,
+  "selection": "Shuffle corpus with fixed seed, keep 1000 documents; retain development claims whose complete gold evidence is in that corpus; shuffle eligible claims and take up to 30. Gold is used only for selection and scoring.",
+  "limitations": [
+    "Restricted-corpus evaluation is easier than full SciFact retrieval",
+    "Development set, not hidden official test set",
+    "Pretrained weights unchanged; extraction selection was revised after observing the baseline development result, so this is development evaluation, not an independent final acceptance test",
+    "This does not validate truth assessment, causal reasoning, or hypothesis quality",
+    "Extraction precision is exact sentence containment and does not measure semantic equivalence"
+  ],
+  "lexical_macro_recall8": 1.0,
+  "hybrid_macro_recall8": 1.0,
+  "candidate_rationale_precision": 0.3333333333333333,
+  "first_candidate_rationale_accuracy": 0.6666666666666666,
+  "hybrid_active_queries": 27,
+  "reranked_queries": 27,
+  "seconds": 157.0019271049996,
+  "results": [
+    {
+      "claim_id": 770,
+      "gold_documents": [
+        "15476777"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 549,
+      "gold_documents": [
+        "9433958"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 521,
+      "gold_documents": [
+        "34873974"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 1303,
+      "gold_documents": [
+        "12631697"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 922,
+      "gold_documents": [
+        "17077004"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 2,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 230,
+      "gold_documents": [
+        "3067015"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 180,
+      "gold_documents": [
+        "16966326"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 525,
+      "gold_documents": [
+        "13639330"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 723,
+      "gold_documents": [
+        "5531479"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 1021,
+      "gold_documents": [
+        "9433958"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 536,
+      "gold_documents": [
+        "16056514"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 2,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 852,
+      "gold_documents": [
+        "13843341"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 56,
+      "gold_documents": [
+        "4709641"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 721,
+      "gold_documents": [
+        "1834762"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 1140,
+      "gold_documents": [
+        "12009265"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 674,
+      "gold_documents": [
+        "2095573"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 57,
+      "gold_documents": [
+        "4709641"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 823,
+      "gold_documents": [
+        "15319019"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 1150,
+      "gold_documents": [
+        "11369420"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 115,
+      "gold_documents": [
+        "33872649"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 1020,
+      "gold_documents": [
+        "9433958"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 415,
+      "gold_documents": [
+        "6309659"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 516,
+      "gold_documents": [
+        "29564505"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 1132,
+      "gold_documents": [
+        "33499189"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 50,
+      "gold_documents": [
+        "12580014"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 100,
+      "gold_documents": [
+        "4381486"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 993,
+      "gold_documents": [
+        "16472469"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    }
+  ]
+}
