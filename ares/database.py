@@ -24,6 +24,11 @@ class AccessDenied(Exception):
 
 
 class Database:
+    def __new__(cls,path):
+        if cls is Database and str(path).startswith(('postgresql://','postgres://')):
+            from .postgres import PostgresDatabase
+            return object.__new__(PostgresDatabase)
+        return object.__new__(cls)
     def __init__(self, path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)

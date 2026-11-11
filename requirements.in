@@ -5,3 +5,4 @@ pytest==9.2.0
 fastembed==0.7.4
 defusedxml==0.7.1
 socksio==1.0.0
+psycopg[binary]==3.3.3

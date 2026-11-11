@@ -91,12 +91,14 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
         )
         return response
 
-    def authenticate(authorization: str = Header(default="")):
+    async def authenticate(authorization: str = Header(default="")):
         scheme, _, token = authorization.partition(" ")
         digest = hashlib.sha256(token.encode()).digest()
         if scheme.lower() == "bearer":
             for user, expected in digests.items():
                 if secrets.compare_digest(digest, expected):
+                    from .postgres import PRINCIPAL
+                    PRINCIPAL.set(user)
                     return user
         raise HTTPException(401, "Valid bearer credentials required")
 
@@ -159,6 +161,8 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
         with storage.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             storage.authorize(db, project_id, user, write=True)
+            if getattr(db,'is_postgres',False) and idempotency_key:
+                db.execute("SELECT pg_advisory_xact_lock(hashtext(?))",(project_id+':'+idempotency_key,))
             existing = db.execute("SELECT run_id FROM run_state WHERE project_id=? AND request_key=?",
                                   (project_id, idempotency_key)).fetchone() if idempotency_key else None
             if existing:
@@ -432,5 +436,5 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
 
 def app_factory():
     credentials = json.loads(os.environ.get("ARES_CREDENTIALS", "{}"))
-    return create_app(Path(os.environ.get("ARES_DATABASE", "state/ares.db")), credentials,
+    return create_app(os.environ.get("ARES_DATABASE", "state/ares.db"), credentials,
                       auto_process=os.environ.get("ARES_QUEUE_MODE", "inline") == "inline")
