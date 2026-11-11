@@ -1,18 +1,15 @@
 # Requirements traceability
 
-| Design requirement | Current implementation |
-| --- | --- |
-| No additional spending | No paid providers or provisioned services; bounded keyless metadata search |
-| Project isolation | Named users, owner/editor/viewer authorization, scoped database queries |
-| Provenance and evidence | Immutable source snapshots, hashes, offsets, licenses, reviews, cited reports |
-| Retrieval | SQLite FTS5 lexical retrieval; semantic RAG remains pending |
-| Bounded agents | Deterministic leased workflow, cancellation, three attempts; autonomous multi-agent reasoning pending |
-| Scientific context | Reviewer-supplied nine-field fingerprints, mismatch/unknown handling |
-| Hypotheses | Versioned proposals with mechanism and falsification criteria |
-| Tool execution | Audited sample statistics and unit conversion; no arbitrary code |
-| Memory | Persistent project sources/reports/claims/history; learning is not implemented |
-| React and 3D | Source graph, progress, reports, source review, claim and hypothesis forms |
-| Operations | SQL schema scripts, backup verification, hosted-shell and Docker recipes |
-| Quality gates | Backend behavior tests, frontend interaction tests, production build |
-
-The master design remains the target. Features listed as pending are not represented as complete.
+| Requirement | Implemented behavior | Remaining gap |
+| --- | --- | --- |
+| No additional spending | No billable endpoints/trials/provisioning; local inference on existing host | Always-on free hosting not established |
+| Project security | Named users, scoped owner/editor/viewer authorization, input/source budgets | PostgreSQL RLS, public ingress controls, scale tests |
+| Lawful collection | Fixed API, explicit license gate, safe XML, depth/document bounds | Live full-text verification, broader sources/PDF |
+| RAG | Real MiniLM embeddings + FTS + RRF + cross-encoder; local Qwen generation | Scientific retrieval benchmark and robust synthesis |
+| Agents | Policies choose primary/counterevidence search and broaden sparse searches; extraction/critic/generation stages emit events | Adaptive domain reasoning and independent critic validation |
+| Evidence | Exact quotes, hashes, location offsets, extracted candidate statements, reviewer context, retraction history | Automated validated study appraisal and independence analysis |
+| Hypotheses | Local model generates cited mechanism/falsification candidates; deterministic replication fallback | Validated plausibility, prior-art search, expert assessment |
+| Learning | Per-run pending memory, owner review, relevance feedback used in similar-query embeddings | Evaluated learning gains and offline model training |
+| Tools | Sample statistics and dimension-checked units | Domain reasoning and experimental design tools |
+| UI | React, actual-event spider/DB activity visuals, reports, sources, evidence forms | Browser visual/WebGL validation and production UX review |
+| Operations | Locks, leases, limits, backup verification, CI, Docker recipe | Production deployment, RLS, recovery/load objectives |

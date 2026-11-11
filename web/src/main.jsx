@@ -2,12 +2,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Scene from './Scene';
 import Evidence from './Evidence';
+import Memory from './Memory';
 import './style.css';
 
 const STAGES = {
-  queued: 'Research queued', plan: 'Research plan created',
+  reasoner_started: 'Preparing local reasoning', reasoner_completed: 'Local reasoning finished', planner_decision: 'Research strategy adjusted', queued: 'Research queued', plan: 'Research plan created',
   external_search_started: 'Searching Europe PMC',
-  external_search_completed: 'Metadata received', external_search_failed: 'Source unavailable',
+  spider_fetch: 'Fetching open-access document', document_ingested: 'Full text stored', document_rejected: 'Document unavailable or license rejected', memory_retrieval: 'Retrieving project evidence', extract: 'Extracting candidate findings', critic: 'Checking evidence limits', hypothesize: 'Proposing follow-up tests', external_search_completed: 'Metadata received', external_search_failed: 'Source unavailable',
   retrieve: 'Project passages retrieved', audit: 'Citation spans checked',
   report: 'Report saved', failed: 'Research failed', cancelled: 'Research cancelled',
 };
@@ -177,6 +178,7 @@ export function App() {
         <span className="folder">▱</span><span>{project?.name || 'Choose a project'}</span><span>⌄</span>
       </button>
       <nav aria-label="Workspace navigation">
+        <button disabled={!project} className={tab === 'memory' ? 'active' : ''} onClick={() => setTab('memory')}>▣ Research memory</button>
         <button disabled={!project} className={tab === 'evidence' ? 'active' : ''} onClick={() => setTab('evidence')}>◇ Evidence review</button>
         <button className={tab === 'research' ? 'active' : ''} onClick={() => setTab('research')}><span>◎</span> Research</button>
         <button className={tab === 'sources' ? 'active' : ''} onClick={() => setTab('sources')}><span>▤</span> Source library <b>{sources.length}</b></button>
@@ -189,21 +191,21 @@ export function App() {
       <div className="sidebar-bottom"><span className="avatar">{user?.username.slice(0, 1).toUpperCase() || 'A'}</span><div>{user?.username || 'Private workspace'}<small>₹0 external service spend</small></div>{user && <button aria-label="Sign out" onClick={() => location.reload()}>↪</button>}</div>
     </aside>
     <main inert={!user || !!modal}>
-      <header><span>Workspace <span className="slash">/</span> {project?.name || 'Research'}</span><div className="header-right"><span className="status-light"/> Deterministic mode <button className="quiet" onClick={() => setReduced(!reduced)} aria-pressed={reduced}>2D view</button></div></header>
+      <header><span>Workspace <span className="slash">/</span> {project?.name || 'Research'}</span><div className="header-right"><span className="status-light"/> {user?.mode || 'Research workspace'} <button className="quiet" onClick={() => setReduced(!reduced)} aria-pressed={reduced}>2D view</button></div></header>
       {error && <div className="error" role="alert">{error}<button onClick={() => setError('')} aria-label="Dismiss error">×</button></div>}
       <div className="main-content">
-        <div className="page-title"><div><p className="eyebrow">EVIDENCE FIRST</p><h1>{tab === 'research' ? 'Follow the evidence.' : tab === 'evidence' ? 'Review the scientific context.' : 'Your research sources.'}</h1><p>{tab === 'research' ? 'Ask a question. Inspect the sources. Keep the evidence traceable.' : 'Versioned source text, provenance, and review status in one place.'}</p></div><button className="secondary" disabled={!project || project.role === 'viewer'} onClick={() => setModal({ type: 'source' })}>＋ Add source</button></div>
+        <div className="page-title"><div><p className="eyebrow">EVIDENCE FIRST</p><h1>{tab === 'research' ? 'Follow the evidence.' : tab === 'memory' ? 'Keep research reviewable.' : tab === 'evidence' ? 'Review the scientific context.' : 'Your research sources.'}</h1><p>{tab === 'research' ? 'Ask a question. Inspect the sources. Keep the evidence traceable.' : 'Versioned source text, provenance, and review status in one place.'}</p></div><button className="secondary" disabled={!project || project.role === 'viewer'} onClick={() => setModal({ type: 'source' })}>＋ Add source</button></div>
 
         {tab === 'research' ? <>
           <section className="map-card">
             <div className="map-top"><span><i className="status-light"/>{running ? STAGES[selectedEvent?.stage] || 'Waiting for worker' : 'Research activity'}</span><span>{sources.length} stored sources · {report?.citations.length || 0} cited passages</span></div>
-            <Scene sources={sources} cited={cited} reduced={reduced}/>
+            <Scene sources={sources} cited={cited} reduced={reduced} activity={selectedEvent} running={running}/>
             <div className="map-bottom"><span>PROJECT KNOWLEDGE</span><span className="legend"><i/> Stored source <i className="lime"/> Cited in this report</span></div>
           </section>
           <form className="question-box" onSubmit={submit}>
             <label htmlFor="question">What would you like to investigate?</label>
             <textarea id="question" value={question} onChange={event => setQuestion(event.target.value)} minLength={8} maxLength={2000} required placeholder="How does humidity affect the stability of protective coatings?" rows={2}/>
-            <div className="question-actions"><label className="checkbox"><input type="checkbox" checked={external} onChange={event => setExternal(event.target.checked)}/> Search Europe PMC metadata</label><button className="primary" disabled={!project || busy || project.role === 'viewer'}>Start research <span>↗</span></button></div>
+            <div className="question-actions"><label className="checkbox"><input type="checkbox" checked={external} onChange={event => setExternal(event.target.checked)}/> Collect open-access literature</label><button className="primary" disabled={!project || busy || project.role === 'viewer'}>Start research <span>↗</span></button></div>
           </form>
           <div className="results-grid">
             <section className="report-panel">
@@ -211,11 +213,16 @@ export function App() {
               {report ? <>
                 <div className="assessment"><span className="assessment-badge">Inconclusive</span><span>Scientific assessment requires review</span></div>
                 {report.outdated_sources.length > 0 && <p className="warning">Source reviews have changed since this report was saved. Start a new run to refresh the evidence.</p>}
-                <h3>{report.question}</h3><p>{report.summary}</p>
+                <h3>{report.question}</h3>{report.summary_status && <small>{report.summary_status}</small>}<p>{report.summary}</p>{report.reasoner && <p>Local reasoning: {report.reasoner.status}{report.reasoner.reason ? ' — ' + report.reasoner.reason : ''}</p>}
+                {report.retrieval && <p className="warning">Retrieval: {report.retrieval.mode} · {report.retrieval.dense_available ? 'Dense embeddings + keyword search' : report.retrieval.reason || 'No indexed passages'}</p>}
+                {report.findings?.length > 0 && <section><h3>Extracted candidate findings</h3><p>Exact source statements. Scientific meaning and study context still require review.</p>{report.findings.map((f,i)=><article className="citation" key={i}><span>{f.citation} · {f.method}</span><blockquote>{f.statement}</blockquote><p>Measurements found: {f.measurements.join(', ')||'none'}</p></article>)}</section>}
+                {report.critique && <details><summary>Evidence critic decision</summary><p>{report.critique.reason}</p>{report.critique.missing_checks.map(x=><p key={x}>{x}</p>)}{report.critique.potential_disagreements.map((x,i)=><p key={i}>{x.left} / {x.right}: {x.reason}</p>)}{report.critique.rejected_proposals?.map((r,i)=><p key={'rejected'+i}>Rejected model proposal: {r.check.reasons.join('; ')}</p>)}</details>}
+                {report.hypotheses?.map((h,i)=><article className="citation" key={'h'+i}><h3>Follow-up proposal · requires review</h3><p>{h.statement}</p><blockquote>{h.basis_quote}</blockquote><p>{h.mechanism}</p><p>Falsification: {h.falsification}</p><p>No experiment has been executed. Novelty has not been established.</p></article>)}
                 {report.citations.map(citation => <article className="citation" key={citation.label}>
-                  <div className="citation-heading"><span className="citation-label">{citation.label}</span><span>{citation.origin === 'europepmc_metadata' ? 'Bibliographic metadata' : 'Source passage'}</span></div>
+                  <div className="citation-heading"><span className="citation-label">{citation.label}</span><span>{citation.origin === 'europepmc_metadata' ? 'Bibliographic metadata' : citation.origin === 'europepmc_fulltext' ? 'Licensed full-text passage' : 'Source passage'}</span></div>
                   <h4>{citation.title}</h4><blockquote>{citation.quote}</blockquote>
                   <div className="citation-meta"><a href={safeLink(citation.url)} target="_blank" rel="noreferrer">{citation.url}</a><span>Characters {citation.start_offset}–{citation.end_offset}</span></div>
+                  {project.role === 'owner' && <div><button className="quiet" onClick={async()=>{try{await api('/projects/'+project.id+'/runs/'+run.id+'/feedback',{method:'POST',body:JSON.stringify({source_id:citation.source_id,relevant:true})});setError('Relevance feedback saved for future similar queries.')}catch(e){setError(e.message)}}}>Useful source</button><button className="quiet" onClick={async()=>{try{await api('/projects/'+project.id+'/runs/'+run.id+'/feedback',{method:'POST',body:JSON.stringify({source_id:citation.source_id,relevant:false})});setError('Relevance feedback saved for future similar queries.')}catch(e){setError(e.message)}}}>Not relevant</button></div>}
                   <details><summary>Provenance</summary><p>{citation.license_status}</p><code>SHA-256 {citation.digest}</code><p>Stored {new Date(citation.retrieved_at).toLocaleString()}</p></details>
                 </article>)}
                 <div className="limitations"><h4>Assessment limits</h4>{report.limitations.map(item => <p key={item}>{item}</p>)}</div>
@@ -225,7 +232,7 @@ export function App() {
               {events.length ? <ol className="timeline">{events.map(event => <li key={event.id}><span className={'event-icon ' + (event.stage.includes('failed') ? 'failed' : '')}/><div><strong>{STAGES[event.stage] || event.stage}</strong><p>{event.payload.message || (event.payload.count !== undefined ? event.payload.count + ' records received' : event.payload.exact_spans_checked !== undefined ? event.payload.exact_spans_checked + ' exact spans checked' : event.payload.passages !== undefined ? event.payload.passages + ' matching passages' : event.stage === 'report' ? 'Report persisted with citations' : '')}</p><time>{new Date(event.created_at).toLocaleTimeString()}</time></div></li>)}</ol> : <p className="muted">Run activity will appear here.</p>}
             </section>
           </div>
-        </> : tab === 'evidence' && project ? <Evidence key={project.id} api={api} project={project} sources={sources}/> : <section className="source-list">
+        </> : tab === 'memory' && project ? <Memory key={project.id} api={api} project={project}/> : tab === 'evidence' && project ? <Evidence key={project.id} api={api} project={project} sources={sources}/> : <section className="source-list">
           {!sources.length && <div className="empty-report"><h3>No sources yet</h3><p>Add text you have permission to use, with its source URL and license information.</p></div>}
           {sources.map(source => <article key={source.id}><div><span className="source-icon">▤</span></div><div className="source-content"><h3>{source.title}</h3><a href={safeLink(source.url)} target="_blank" rel="noreferrer">{source.url}</a><p>{source.text.slice(0, 220)}{source.text.length > 220 ? '…' : ''}</p><span className={'source-status ' + source.status}>{source.status}</span><span className="source-kind">{source.origin.replaceAll('_', ' ')}</span></div><button className="quiet" disabled={project?.role === 'viewer'} onClick={() => setModal({ type: 'review', source })}>Review</button></article>)}
         </section>}

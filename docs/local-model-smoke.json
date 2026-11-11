@@ -1,0 +1,188 @@
+{
+  "dataset": "Synthetic integration example; not scientific validation",
+  "report": {
+    "run_id": "bf9ab917-4455-44ae-ac8d-b246e7968105",
+    "question": "How might humidity affect coating adhesion?",
+    "retrieval": {
+      "reviewed_feedback_used": 0,
+      "reranked": true,
+      "mode": "hybrid",
+      "dense_available": true,
+      "model": "sentence-transformers/all-MiniLM-L6-v2",
+      "model_sha256": "09697d311c5b7cc77ee81000158c5d2f41739328b5b0e12e43ab558130a70301",
+      "indexed_passages": 1,
+      "fusion": "RRF k=60",
+      "similarity_is_truth_probability": false
+    },
+    "reasoner": {
+      "status": "completed",
+      "model_sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+      "model": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+      "paid_api_calls": 0,
+      "answer": "Coating adhesion decreased after exposure to high humidity.",
+      "answer_status": "exact source extract",
+      "critic_warnings": [
+        "Model mechanisms and falsification logic have not been scientifically validated; proposals require expert review"
+      ],
+      "scientific_validity": "unvalidated"
+    },
+    "findings": [
+      {
+        "source_id": "6f989ff2-ac69-49a7-b8f6-46eb6daa3a70",
+        "citation": "S1",
+        "statement": "Synthetic observation: Coating adhesion decreased after exposure to high humidity.",
+        "start_offset": 0,
+        "end_offset": 82,
+        "measurements": [],
+        "study_design": null,
+        "context_verified": false,
+        "method": "extractive-pattern-v1",
+        "status": "candidate",
+        "limitations": [
+          "Sentence-level extraction; study context and scientific interpretation require review"
+        ]
+      }
+    ],
+    "critique": {
+      "potential_disagreements": [],
+      "study_identifier_groups": [
+        [
+          "S1"
+        ]
+      ],
+      "independence_verified": false,
+      "missing_checks": [
+        "Full study context",
+        "Risk of bias",
+        "Independent study identity",
+        "Expert scientific appraisal"
+      ],
+      "decision": "abstain_from_scientific_verdict",
+      "reason": "Extractive candidates and retrieval scores do not validate scientific support",
+      "rejected_proposals": [
+        {
+          "candidate": {
+            "kind": "model_generated_candidate",
+            "statement": "Coating adhesion increases with higher humidity.",
+            "mechanism": "The hypothesis suggests a direct relationship between humidity and adhesion, which is not supported by the evidence.",
+            "falsification": "If the coating adhesion increases with higher humidity, then the water uptake measured before the adhesion test would be higher.",
+            "citation": "S1",
+            "basis_quote": "Synthetic observation: Coating adhesion decreased after exposure to high humidity.",
+            "source_id": "6f989ff2-ac69-49a7-b8f6-46eb6daa3a70",
+            "limitations": [],
+            "status": "proposal_needs_review",
+            "novelty": "not assessed",
+            "experiment_executed": false,
+            "grounding": "quotation integrity checked; interpretation and mechanism unverified"
+          },
+          "check": {
+            "accepted_as_candidate": false,
+            "reasons": [
+              "Proposed direction opposes its cited observation without a validated reconciliation",
+              "The generated mechanism explicitly disclaims its own evidential support"
+            ],
+            "scientific_validation": false
+          }
+        }
+      ]
+    },
+    "hypotheses": [
+      {
+        "kind": "replication_candidate",
+        "statement": "Test whether the relationship in the cited observation replicates under independently controlled conditions.",
+        "basis_quote": "Synthetic observation: Coating adhesion decreased after exposure to high humidity.",
+        "source_id": "6f989ff2-ac69-49a7-b8f6-46eb6daa3a70",
+        "citation": "S1",
+        "mechanism": "Not established by the extracted sentence; requires a domain-specific mechanism before experimental approval.",
+        "falsification": "A preregistered independent replication fails to reproduce the stated relationship within a justified uncertainty bound.",
+        "experiment_plan": {
+          "design": "Independent replication proposal",
+          "required_inputs": [
+            "Operational definitions",
+            "Population or material",
+            "Comparator or control",
+            "Measurement protocol",
+            "Effect estimate and variance",
+            "Domain-specific safety review"
+          ],
+          "sample_size": null,
+          "reason": "Sample size cannot be chosen without an effect target, variance, design, and error criteria"
+        },
+        "novelty": "not assessed",
+        "status": "proposal_needs_review",
+        "experiment_executed": false
+      }
+    ],
+    "plan": {
+      "objective": "How might humidity affect coating adhesion?",
+      "task_type": "mechanism",
+      "search_terms": [
+        "adhesion",
+        "affect",
+        "coating",
+        "how",
+        "humidity",
+        "might"
+      ],
+      "decisions": [
+        {
+          "action": "retrieve_project_evidence",
+          "reason": "Inspect existing project evidence before requesting new documents"
+        },
+        {
+          "action": "check_context_and_counterevidence",
+          "reason": "Matching text alone cannot establish a scientific conclusion"
+        }
+      ],
+      "budgets": {
+        "search_requests": 2,
+        "fulltext_documents": 4,
+        "citation_depth": 1,
+        "passages": 8,
+        "deadline_seconds": 180
+      },
+      "planner": "explicit-policy-v1",
+      "general_reasoning_model": false
+    },
+    "assessment": "inconclusive",
+    "calibrated": false,
+    "summary": "Coating adhesion decreased after exposure to high humidity.",
+    "summary_status": "exact source extract selected by local model",
+    "citations": [
+      {
+        "id": "6f989ff2-ac69-49a7-b8f6-46eb6daa3a70:0",
+        "source_id": "6f989ff2-ac69-49a7-b8f6-46eb6daa3a70",
+        "project_id": "32947a87-7e23-45a9-af60-cc54767a34ac",
+        "start_offset": 0,
+        "end_offset": 134,
+        "text": "Synthetic observation: Coating adhesion decreased after exposure to high humidity. Water uptake was measured before the adhesion test.",
+        "url": "https://example.org/synthetic",
+        "digest": "dc4c55381a0c5b2aea54b57d450779a7472e5d7bf44a178e0dfcc42065782f30",
+        "license_status": "synthetic test fixture",
+        "retrieved_at": "2026-11-11T09:49:51.950990+00:00",
+        "title": "Synthetic coating observation",
+        "study_id": "https://example.org/synthetic",
+        "origin": "user_supplied",
+        "review_version": 0,
+        "semantic_similarity": 0.8831976056098938,
+        "retrieval_score": 0.03278688524590164,
+        "rerank_score": 7.166261672973633,
+        "label": "S1",
+        "quote": "Synthetic observation: Coating adhesion decreased after exposure to high humidity. Water uptake was measured before the adhesion test."
+      }
+    ],
+    "limitations": [
+      "Lexical retrieval establishes relevance only.",
+      "Scientific support, study independence and context compatibility require review.",
+      "Only explicitly supported open licenses are ingested as full text; other results remain metadata.",
+      "Extracted findings are candidates, not independently validated claims."
+    ],
+    "next_steps": [
+      "Review study methods, population or material, conditions, units and measured outcomes.",
+      "Add primary evidence and actively search for counterevidence."
+    ],
+    "created_at": "2026-11-11T09:50:05.411689+00:00",
+    "markdown": "# Research evidence report\n\nHow might humidity affect coating adhesion?\n\nAssessment \u2014 inconclusive\n\nCoating adhesion decreased after exposure to high humidity.\n\n## [S1] Synthetic coating observation\n\nSynthetic observation: Coating adhesion decreased after exposure to high humidity. Water uptake was measured before the adhesion test.\n\nhttps://example.org/synthetic\nSource SHA-256 dc4c55381a0c5b2aea54b57d450779a7472e5d7bf44a178e0dfcc42065782f30\n\n## Extracted candidate findings\n\n- [S1] Synthetic observation: Coating adhesion decreased after exposure to high humidity.\n## Review decision\n\nExtractive candidates and retrieval scores do not validate scientific support\n\n## Limitations\n\n- Lexical retrieval establishes relevance only.\n- Scientific support, study independence and context compatibility require review.\n- Only explicitly supported open licenses are ingested as full text; other results remain metadata.\n- Extracted findings are candidates, not independently validated claims.",
+    "outdated_sources": []
+  }
+}

@@ -1,0 +1,7 @@
+fastapi==0.141.1
+uvicorn==0.52.1
+httpx==0.28.1
+pytest==9.2.0
+fastembed==0.7.4
+defusedxml==0.7.1
+socksio==1.0.0
