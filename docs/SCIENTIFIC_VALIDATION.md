@@ -6,6 +6,14 @@ Claim assessments summarize reviewer-entered supports/contradicts/neutral relati
 
 Hypotheses are proposals with mechanism and falsification text, not executed experiments. Tool results are actual deterministic calculations on submitted data. No experimental results, paper contents, confidence probabilities, or validated benchmarks are fabricated.
 
-Tests cover exact offsets, retraction propagation, context mismatch, unknown context, mixed reviewer evidence, preserved hypothesis versions, injected source instructions, and numeric tool reference values. No scientific benchmark accuracy, automated causal inference, or domain-expert validation has been established.
+Tests cover exact offsets, retraction propagation, context mismatch, unknown context, mixed reviewer evidence, preserved hypothesis versions, injected source instructions, and numeric tool reference values. Automated causal inference and domain-expert validation have not been established.
 
 Release 0.3 adds a ten-case synthetic paraphrase smoke evaluation, real local model integration, and safe XML/citation traversal tests. These are not domain benchmarks. An observed model hallucination is preserved in local-model-failure-observed.json. The revised narrative gate accepts only exact source extracts for factual answer text. Model-generated hypotheses remain speculative and unvalidated; their presence does not mean the model has established a valid mechanism or correctly designed a falsification experiment.
+
+## Recorded SciFact development evaluation
+
+The committed script evaluates 27 development claims whose gold documents fall within a fixed-seed 1,000-document corpus (2,081 passages). Gold is used for selection and scoring, not retrieval. Both lexical and hybrid recall@8 are 1.0 on this restricted corpus. With sentence reranking, 18/27 first candidates match an annotated rationale; precision across all extracted candidates is 0.3333. All 27 queries used hybrid retrieval and reranking. Full per-claim results are in scifact-evaluation.json.
+
+Earlier results are retained: scifact-capacity-baseline.json hit the old dense limit and actually used lexical retrieval, despite the aggregate metric name; scifact-extraction-baseline.json used hybrid retrieval but had about 9.85% candidate precision. Extraction selection was changed after observing these results. This is development evaluation, not an untouched acceptance set, full-corpus benchmark, or validation of hypothesis mechanisms. Rationale matching uses sentence containment rather than semantic equivalence.
+
+A second evaluation with distinct claims was started but its result was not persisted before the workspace expired. It provides no accepted evidence and is not reported as passed. No scientific production approval is implied by passing software CI.

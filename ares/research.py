@@ -131,7 +131,7 @@ class ResearchEngine:
                 db.execute("BEGIN IMMEDIATE")
                 if db.execute("SELECT cancelled FROM run_state WHERE run_id=?",(run_id,)).fetchone()[0]:return True
                 dbs.event(db,run_id,"reasoner_completed",{k:v for k,v in inference.items() if k!='proposals'})
-                dbs.event(db,run_id,"extract",{"candidate_claims":len(findings),"method":"extractive-pattern-v1"})
+                dbs.event(db,run_id,"extract",{"candidate_claims":len(findings),"methods":sorted({finding["method"] for finding in findings})})
                 dbs.event(db,run_id,"critic",criticism)
                 dbs.event(db,run_id,"hypothesize",{"proposals":len(proposals),"type":"model candidates" if inference["status"]=="completed" else "replication candidates"})
                 report = {

@@ -55,6 +55,26 @@ jobs:
         env:
           ARES_TEST_POSTGRES: postgresql://ares_app:fixture_runtime_only@localhost:5432/ares_test
         run: python -m pytest tests/test_postgres.py -v
+      - name: Restore PostgreSQL backup and verify retained isolation
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$PG_CONTAINER" pg_dump -U postgres ares_test > /tmp/ares-backup.sql
+          docker exec "$PG_CONTAINER" createdb -U postgres ares_restore
+          docker exec -i "$PG_CONTAINER" psql -U postgres -d ares_restore -v ON_ERROR_STOP=1 < /tmp/ares-backup.sql
+          python - <<'PYTHON'
+          import psycopg
+          with psycopg.connect('postgresql://ares_app:fixture_runtime_only@localhost:5432/ares_restore') as db:
+              db.execute("SELECT set_config('ares.user','alice',true)")
+              assert db.execute('SELECT count(*) FROM sources').fetchone()[0] == 1
+              assert db.execute('SELECT count(*) FROM reports').fetchone()[0] == 1
+              alice_sources = db.execute('SELECT id FROM sources').fetchall()
+              db.execute("SELECT set_config('ares.user','charlie',true)")
+              assert db.execute('SELECT count(*) FROM sources').fetchone()[0] == 1
+              assert db.execute('SELECT count(*) FROM reports').fetchone()[0] == 0
+              assert db.execute('SELECT id FROM sources').fetchall() != alice_sources
+          print('Restored source/report data and tenant isolation verified')
+          PYTHON
   live-fulltext:
     if: github.event.repository.private == false
     runs-on: ubuntu-latest

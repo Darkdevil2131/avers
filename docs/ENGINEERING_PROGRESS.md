@@ -1,3 +1,16 @@
+# Current verified status — 2026-11-11
+
+This section supersedes earlier release notes below.
+
+- GitHub run 43002167894 passed application/frontend tests, PostgreSQL 16 RLS tests (including 32 reads across 8 threads), live licensed full-text provenance checks, and Docker build/start.
+- Europe PMC and NCBI BioC successfully supplied real full-text articles. Original bytes, SHA-256, license metadata, and normalized passage locations are retained.
+- SciFact development evaluation: 27 claims, 1,000 documents, recall@8 100%, first-candidate rationale agreement 66.7%, candidate precision 33.3%. This is not sufficient evidence of scientific production readiness.
+- PostgreSQL backup/restore verification is included in the follow-up CI change; its latest run is authoritative.
+- A second evaluation result was lost with the temporary workspace and is not counted. Repository changes already pushed were restored from GitHub.
+- Public hosting, independent scientific acceptance, realistic production load testing, and browser/WebGL acceptance remain unfinished. No paid service or trial was provisioned.
+
+## Historical release notes
+
 # Engineering status — 2026-11-11
 
 This repository is an incomplete research product under development. It must not be described as the complete ARES design or scientifically validated.
