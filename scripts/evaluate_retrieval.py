@@ -1,4 +1,3 @@
-"""Small synthetic smoke evaluation, explicitly not a scientific retrieval benchmark."""
 import json
 import tempfile
 from pathlib import Path
