@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Noesis</title>
+<style>
+:root{--bg:#eef2f4;--panel:#fff;--ink:#17212b;--mute:#5b6b7a;--line:#d3dce3;--accent:#2b50aa;--g1:#c9d3dc;--g2:#8fb3c9;--g3:#3f93a8;--g4:#0f6b6f;--bad:#b3362f;--warn:#a86a00;--ok:#1d7a4d;
+--serif:"Source Serif 4",Georgia,"Times New Roman",serif;--sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#0f161c;--panel:#16212a;--ink:#e6edf2;--mute:#97a8b6;--line:#2a3945;--accent:#7fa2f0;--g1:#2f3f4b;--g2:#406a82;--g3:#3f93a8;--g4:#4cc2c4;--bad:#ff8a80;--warn:#e0a84a;--ok:#5fd09a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans)}
+a{color:var(--accent)}button,input,select{font:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+aside{background:var(--panel);border-right:1px solid var(--line);padding:20px;display:flex;flex-direction:column;gap:16px}
+h1{font:600 26px var(--serif);margin:0;letter-spacing:.01em}h2{font:600 20px var(--serif);margin:0 0 8px}h3{font:600 15px var(--sans);margin:0 0 4px}
+.sub{color:var(--mute);font-size:13px;margin:0}
+main{padding:24px 32px;max-width:1100px}
+nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:20px;flex-wrap:wrap}
+nav.tabs button{background:none;border:0;padding:8px 14px;cursor:pointer;color:var(--mute);border-bottom:2px solid transparent}
+nav.tabs button[aria-selected=true]{color:var(--ink);border-color:var(--accent);font-weight:600}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:4px;padding:8px 14px;cursor:pointer}
+.btn.ghost{background:none;color:var(--accent);border:1px solid var(--accent)}.btn:disabled{opacity:.5;cursor:default}
+input[type=text],input[type=password]{width:100%;padding:8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
+.plist button{display:block;width:100%;text-align:left;background:none;border:0;border-left:3px solid transparent;padding:6px 8px;cursor:pointer;color:var(--ink)}
+.plist button[aria-current=true]{border-color:var(--accent);background:var(--bg);font-weight:600}
+.item{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--g1);padding:12px 14px;margin:0 0 10px;border-radius:2px}
+.item.disputed,.item.contradicted{border-left-color:var(--bad)}.item.supported,.item.directly_supported{border-left-color:var(--ok)}
+.item.insufficient_evidence,.item.not_independently_verifiable{border-left-color:var(--warn)}
+.meter{display:inline-flex;gap:2px;vertical-align:middle}.meter i{width:12px;height:8px;background:var(--g1);display:block}
+.meter[data-g="1"] i:nth-child(-n+1){background:var(--g1);outline:1px solid var(--mute)}.meter[data-g="2"] i:nth-child(-n+2){background:var(--g2)}
+.meter[data-g="3"] i:nth-child(-n+3){background:var(--g3)}.meter[data-g="4"] i{background:var(--g4)}
+.tag{display:inline-block;padding:1px 8px;border:1px solid var(--line);border-radius:10px;font-size:12px;color:var(--mute);margin-right:6px}
+.tag.bad{color:var(--bad);border-color:var(--bad)}.tag.ok{color:var(--ok);border-color:var(--ok)}.tag.warn{color:var(--warn);border-color:var(--warn)}
+.ev{margin:8px 0 0 12px;padding-left:10px;border-left:1px solid var(--line);font-size:13px}
+.drop{border:2px dashed var(--line);padding:28px;text-align:center;border-radius:4px;background:var(--panel)}.drop.over{border-color:var(--accent)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.err{color:var(--bad)}.empty{color:var(--mute);padding:20px;border:1px dashed var(--line)}
+pre.report{white-space:pre-wrap;font:15px/1.65 var(--serif);background:var(--panel);padding:24px;border:1px solid var(--line);max-width:80ch}
+svg.graph{width:100%;height:560px;background:var(--panel);border:1px solid var(--line)}svg text{fill:var(--ink);font-size:10px}
+table{border-collapse:collapse;width:100%}td,th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}
+@media(max-width:800px){.app{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line)}main{padding:16px}}
+@media(prefers-reduced-motion:no-preference){.item{transition:border-color .2s}}
+</style></head><body><div class="app">
+<aside><div><h1>Noesis</h1><p class="sub">Evidence review for research papers</p></div>
+<div><label class="sub" for="key">API key (if the server requires one)</label><input id="key" type="password" autocomplete="off"></div>
+<div id="acct"><label class="sub" for="em">Account (only if the server uses accounts)</label>
+<input id="em" type="text" placeholder="email" autocomplete="username"><input id="pw" type="password" placeholder="password (10+ chars)" autocomplete="current-password" style="margin-top:6px">
+<div class="row" style="margin-top:6px"><button class="btn ghost" id="lg">Log in</button><button class="btn ghost" id="rg">Register</button></div><p class="sub" id="acctmsg"></p></div>
+<div class="row"><input id="pname" type="text" placeholder="New project name" aria-label="New project name"><button class="btn" id="mk">Create project</button></div>
+<div class="plist" id="plist" role="list"></div></aside>
+<main><nav class="tabs" id="tabs" role="tablist"></nav><section id="view" aria-live="polite"></section></main></div>
+<script>
+const $=s=>document.querySelector(s);
+const h=(t,a={},...k)=>{const e=document.createElement(t);for(const[x,v]of Object.entries(a)){if(x==='class')e.className=v;else if(x.startsWith('on'))e.addEventListener(x.slice(2),v);else if(v!==false&&v!=null)e.setAttribute(x,v===true?'':v)}
+ for(const c of k.flat())if(c!=null)e.append(c.nodeType?c:document.createTextNode(String(c)));return e};
+const st={pid:null,tab:'Ask',job:null,token:''};
+async function api(path,opt={}){const hd={...(opt.headers||{})};const k=$('#key').value;if(k)hd['X-API-Key']=k;if(st.token)hd['Authorization']='Bearer '+st.token;
+ const r=await fetch('/api/v1'+path,{...opt,headers:hd});let b=null;try{b=await r.json()}catch{}
+ if(!r.ok)throw new Error((b&&(b.detail&&(typeof b.detail==='string'?b.detail:JSON.stringify(b.detail))))||('HTTP '+r.status));return b}
+const TABS=['Ask','Upload','Claims','Beliefs','Hypotheses','Graph','Report','Corpus','System'];
+function tabs(){const n=$('#tabs');n.replaceChildren(...TABS.map(t=>h('button',{role:'tab','aria-selected':t===st.tab,onclick:()=>{st.tab=t;draw()}},t)))}
+async function projects(){try{const ps=await api('/projects');$('#plist').replaceChildren(...(ps.length?ps.map(p=>h('button',{role:'listitem','aria-current':p.id===st.pid,onclick:()=>{st.pid=p.id;draw();projects()}},p.name)):[h('p',{class:'sub'},'No projects yet. Create one above.')]))}catch(e){$('#plist').replaceChildren(h('p',{class:'err'},e.message))}}
+$('#mk').onclick=async()=>{const n=$('#pname').value.trim();if(!n)return;try{const p=await api('/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n})});st.pid=p.id;$('#pname').value='';await projects();draw()}catch(e){alert(e.message)}};
+const meter=g=>{const m=h('span',{class:'meter','data-g':g,role:'img','aria-label':'evidence grade '+g+' of 4'},h('i'),h('i'),h('i'),h('i'));return m};
+const tone=s=>({supported:'ok',directly_supported:'ok',disputed:'bad',contradicted:'bad'}[s]||(/insufficient|not_indep|unsupported/.test(s)?'warn':''));
+const need=()=>st.pid?null:h('div',{class:'empty'},'Select or create a project to begin.');
+async function draw(){tabs();const v=$('#view');const n=need();if(n){v.replaceChildren(n);return}v.replaceChildren(h('p',{class:'sub'},'Loading…'));
+ try{v.replaceChildren(await VIEWS[st.tab]())}catch(e){v.replaceChildren(h('p',{class:'err'},e.message))}}
+const VIEWS={
+async Ask(){const q=h('input',{type:'text',placeholder:'e.g. How do perovskite solar cells degrade under humidity?','aria-label':'Research question'});
+ const msg=h('p',{class:'sub'}),box=h('div');
+ async function poll(id){const j=await api('/jobs/'+id);if(j.status==='queued'||j.status==='running'){msg.textContent='Working… ('+j.status+')';setTimeout(()=>poll(id),1200);return}
+  if(j.status==='failed'){msg.className='err';msg.textContent=j.error;return}msg.className='sub';msg.textContent='Done. '+j.result.n_papers+' papers considered.';
+  const r=await api(`/projects/${st.pid}/report`);const sym={covered:'ok',partial:'warn',contradicted:'bad',no_evidence:''};
+  box.replaceChildren(h('h2',{},'Coverage'),...j.result.coverage.map(c=>h('div',{class:'item '+(c.status==='covered'?'supported':c.status==='contradicted'?'contradicted':'insufficient_evidence')},h('h3',{},c.hypothesis),
+   h('span',{class:'tag '+sym[c.status]},c.status.replace('_',' ')),h('span',{class:'tag '+(c.gate.passed?'ok':'warn')},c.gate.passed?'passed veracity gate':'withheld by veracity gate'),h('span',{class:'tag'},'independent sources: '+c.n_effective))),
+   h('h2',{style:'margin-top:20px'},'Report'),h('pre',{class:'report'},r.markdown))}
+ const go=h('button',{class:'btn',onclick:async()=>{msg.className='sub';msg.textContent='Submitting…';try{const j=await api(`/projects/${st.pid}/query`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q.value})});poll(j.job_id)}catch(e){msg.className='err';msg.textContent=e.message}}},'Investigate');
+ return h('div',{},h('h2',{},'Ask a research question'),h('p',{class:'sub'},'Noesis proposes testable hypotheses, retrieves evidence, grades it, and refuses to answer when evidence is too thin.'),h('div',{class:'row'},q,go),msg,box)},
+async Upload(){const out=h('div');const input=h('input',{type:'file',accept:'.pdf,.txt','aria-label':'Choose a paper'});
+ const drop=h('div',{class:'drop'},h('p',{},'Drop a PDF or TXT paper here, or choose a file.'),input);
+ const status=h('p',{class:'sub'});
+ async function send(f){status.className='sub';status.textContent='Uploading '+f.name+'…';try{const fd=new FormData();fd.append('file',f);
+  const u=await api(`/projects/${st.pid}/documents`,{method:'POST',body:fd});status.textContent=u.duplicate?'Already uploaded. Re-running analysis.':'Uploaded. Analysing…';
+  const j=await api(`/projects/${st.pid}/documents/${u.id}/analyze`,{method:'POST'});poll(j.job_id)}catch(e){status.className='err';status.textContent=e.message}}
+ async function poll(id){const j=await api('/jobs/'+id);st.job=j;if(j.status==='queued'||j.status==='running'){status.textContent='Analysis '+j.status+'…';setTimeout(()=>poll(id),1000);return}renderJob(j)}
+ const jobBox=h('div');function renderJob(j){status.textContent='Analysis '+j.status.replace(/_/g,' ')+'.';status.className=j.status==='failed'?'err':'sub';
+  const rows=Object.entries((j.result||{}).tasks||{}).map(([k,t])=>h('tr',{},h('td',{},k),h('td',{},h('span',{class:'tag '+(t.status==='failed'?'bad':t.status==='completed'?'ok':'warn')},t.status)),h('td',{},t.engine||''),h('td',{},t.duration_s+'s'),h('td',{class:'err'},t.error||t.reason||'')));
+  jobBox.replaceChildren(j.error?h('p',{class:'err'},j.error):'',rows.length?h('table',{},h('thead',{},h('tr',{},h('th',{},'Task'),h('th',{},'Status'),h('th',{},'Engine'),h('th',{},'Time'),h('th',{},'Note'))),h('tbody',{},rows)):'')}
+ input.onchange=()=>input.files[0]&&send(input.files[0]);
+ drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};drop.ondragleave=()=>drop.classList.remove('over');drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');e.dataTransfer.files[0]&&send(e.dataTransfer.files[0])};
+ if(st.job)renderJob(st.job);out.append(drop,status,jobBox);return out},
+async Claims(){const cs=await api(`/projects/${st.pid}/claims`);if(!cs.length)return h('div',{class:'empty'},'No claims yet. Upload and analyse a paper first.');
+ return h('div',{},h('h2',{},cs.length+' extracted statements'),cs.map(c=>h('div',{class:'item'},h('div',{},h('span',{class:'tag'},c.kind),h('span',{class:'tag'},'page '+c.page),h('span',{class:'tag'},c.section),c.meta.language?h('span',{class:'tag'},c.meta.language):null),h('p',{},c.text),
+  (c.meta.stats||[]).map(s=>h('div',{class:'sub'},'Reported statistic: '+s.raw)))))},
+async Beliefs(){const bs=await api(`/projects/${st.pid}/beliefs`);if(!bs.length)return h('div',{class:'empty'},'No beliefs yet. Run an analysis first.');
+ return h('div',{},h('h2',{},'Claims and the evidence behind them'),h('p',{class:'sub'},'Grades follow study design, peer review, sample size and retraction status. They are not probabilities of truth.'),
+ bs.map(b=>{const ext=b.evidence.filter(e=>e.group!=='source_document');return h('div',{class:'item '+b.assessment},h('h3',{},b.claim_text),
+  h('div',{},h('span',{class:'tag '+tone(b.support_class)},b.support_class.replace(/_/g,' ')),h('span',{class:'tag'},'assessment: '+b.assessment.replace(/_/g,' ')),h('span',{class:'tag'},'uncertainty: '+b.uncertainty),h('span',{class:'tag'},'independent sources: '+b.n_effective)),
+  b.flags.map(f=>h('div',{class:'err'},'⚠ '+f)),
+  ext.length?ext.map(e=>h('div',{class:'ev'},meter(e.grade),' ',h('b',{},e.stance),' · ',e.title||e.doi||e.source,' ',h('span',{class:'sub'},'(design: '+e.design+'; '+e.grade_label+')'),h('div',{class:'sub'},e.criteria.map(c=>c.criterion+' '+c.effect+' ('+c.reason+')').join('; ')))):h('div',{class:'ev sub'},'No independent evidence found. The only support is the paper itself.'),
+  h('div',{},h('button',{class:'btn ghost',onclick:async()=>{const hs=await api('/beliefs/'+b.id+'/history');alert(hs.map(x=>'v'+x.version+' '+x.action+': '+x.reason).join('\n'))}},'View history')))}))},
+async Hypotheses(){const hs=await api(`/projects/${st.pid}/hypotheses`);if(!hs.length)return h('div',{class:'empty'},'No hypotheses yet. They appear when the evidence graph has gaps or contradictions.');
+ return h('div',{},h('h2',{},'Candidate hypotheses'),h('p',{class:'sub'},'All are unverified. Confidence is deliberately not assigned.'),hs.map(x=>{const e=x.proposed_experiment||{};return h('div',{class:'item'},h('h3',{},x.hypothesis_id+': '+x.statement),
+  h('div',{},h('span',{class:'tag'},x.status.replace(/_/g,' ')),h('span',{class:'tag'},x.generation_method.replace(/_/g,' ')),x.domain.map(d=>h('span',{class:'tag'},d))),
+  h('p',{},x.scientific_gap),h('p',{class:'sub'},'Novelty check: '+x.novelty_assessment.verdict.replace(/_/g,' ')+' in '+x.novelty_assessment.corpus_size+' texts on '+x.novelty_assessment.search_date+'. '+x.novelty_assessment.limitation),
+  e.design?h('div',{class:'ev'},h('b',{},'Proposed experiment (not run): '),e.design,h('div',{},'Sample size ≈ '+e.sample_size.n_per_group+' per group, assuming effect size d='+e.sample_size.assumed_effect_size_d),h('div',{},'Succeeds if: '+e.success_criteria),h('div',{},'Fails if: '+e.failure_criteria)):null)}))},
+async Graph(){const g=await api(`/projects/${st.pid}/graph`);if(!g.nodes.length)return h('div',{class:'empty'},'The graph is empty. Analyse a paper first.');
+ const types=['document','claim','entity','paper','belief','evidence'];const cols={};types.forEach(t=>cols[t]=[]);g.nodes.forEach(n=>(cols[n.type]||(cols[n.type]=[])).push(n));
+ const W=1000,H=560,pos={};types.forEach((t,i)=>{const arr=cols[t].slice(0,22);arr.forEach((n,j)=>{pos[n.id]=[60+i*(W-120)/(types.length-1),30+(j+.5)*(H-50)/Math.max(arr.length,1)]})});
+ const NS='http://www.w3.org/2000/svg';const s=document.createElementNS(NS,'svg');s.setAttribute('class','graph');s.setAttribute('viewBox',`0 0 ${W} ${H}`);
+ const col={SUPPORTED_BY:'var(--ok)',CONTRADICTED_BY:'var(--bad)'};
+ g.edges.forEach(e=>{const a=pos[e.source],b=pos[e.target];if(!a||!b)return;const l=document.createElementNS(NS,'line');l.setAttribute('x1',a[0]);l.setAttribute('y1',a[1]);l.setAttribute('x2',b[0]);l.setAttribute('y2',b[1]);l.setAttribute('stroke',col[e.kind]||(e.kind==='entity_relation'?(e.sign<0?'var(--bad)':'var(--accent)'):'var(--line)'));l.setAttribute('stroke-width',e.kind==='entity_relation'?1.6:.8);s.append(l)});
+ g.nodes.forEach(n=>{const p=pos[n.id];if(!p)return;const c=document.createElementNS(NS,'circle');c.setAttribute('cx',p[0]);c.setAttribute('cy',p[1]);c.setAttribute('r',5);c.setAttribute('fill',({document:'var(--ink)',claim:'var(--g2)',entity:'var(--accent)',paper:'var(--warn)',belief:'var(--g4)',evidence:'var(--g3)'})[n.type]);const t=document.createElementNS(NS,'title');t.textContent=n.type+': '+(n.label||n.id);c.append(t);s.append(c);
+  const tx=document.createElementNS(NS,'text');tx.setAttribute('x',p[0]+8);tx.setAttribute('y',p[1]+3);tx.textContent=(n.label||'').slice(0,26);s.append(tx)});
+ return h('div',{},h('h2',{},'Evidence graph'),h('p',{class:'sub'},'Columns: '+types.join(', ')+'. Hover a node for its full text. Blue lines raise, red lines lower; green and red evidence links support or contradict.'),s)},
+async Report(){const r=await api(`/projects/${st.pid}/report`).catch(e=>null);if(!r)return h('div',{class:'empty'},'No report yet. Upload and analyse a paper first.');
+ const dl=h('button',{class:'btn ghost',onclick:()=>{const a=h('a',{href:URL.createObjectURL(new Blob([r.markdown],{type:'text/markdown'})),download:'noesis-report.md'});a.click()}},'Download report (Markdown)');
+ return h('div',{},h('div',{class:'row'},h('h2',{},'Scientific report'),dl),h('pre',{class:'report'},r.markdown))},
+async Corpus(){const [stt,runs]=await Promise.all([api('/corpus/stats'),api('/corpus/runs')]);
+ const topic=h('input',{type:'text',placeholder:'Topic to harvest, e.g. perovskite solar cell degradation','aria-label':'Topic'});
+ const dom=h('select',{'aria-label':'Domain'},['technology','medicine','space'].map(d=>h('option',{value:d},d)));
+ const lim=h('input',{type:'text',value:'100','aria-label':'Papers per source',style:'width:80px'});const msg=h('p',{class:'sub'});
+ const go=h('button',{class:'btn',onclick:async()=>{try{await api('/corpus/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topics:[topic.value],domain:dom.value,limit:parseInt(lim.value)||100})});msg.textContent='Harvest started. Reload this tab to see progress.'}catch(e){msg.className='err';msg.textContent=e.message}}},'Harvest from real sources');
+ const q=h('input',{type:'text',placeholder:'Search the local corpus','aria-label':'Search corpus'});const res=h('div');
+ q.onkeydown=async e=>{if(e.key!=='Enter')return;const r=await api('/corpus/search?q='+encodeURIComponent(q.value));res.replaceChildren(...(r.length?r.map(p=>h('div',{class:'item'},h('h3',{},p.title),h('span',{class:'tag'},p.source),h('span',{class:'tag'},p.design),h('span',{class:'tag'},'score '+p.score),h('span',{class:'tag'},'license: '+(p.license||'unknown')),p.retracted?h('span',{class:'tag bad'},'retracted'):null)):[h('div',{class:'empty'},'No matches.')]))};
+ return h('div',{},h('h2',{},'Literature corpus: '+stt.total+' papers'),h('p',{class:'sub'},'By source: '+JSON.stringify(stt.by_source)+'. By domain: '+JSON.stringify(stt.by_domain)+'. Retracted: '+stt.retracted),
+  h('div',{class:'row'},topic,dom,lim,go),msg,h('h3',{style:'margin-top:16px'},'Search'),q,res,
+  h('h3',{style:'margin-top:16px'},'Recent harvest runs'),h('table',{},h('tbody',{},runs.map(r=>h('tr',{},h('td',{},r.source),h('td',{},r.query),h('td',{},h('span',{class:'tag '+(r.status==='ok'?'ok':'bad')},r.status)),h('td',{},r.fetched+' fetched, '+r.new+' new'),h('td',{class:'err'},r.error||''))))))},
+async System(){const [en,co]=await Promise.all([api('/engines'),api('/connectors')]);
+ return h('div',{},h('h2',{},'Reasoning engines'),h('table',{},h('tbody',{},Object.entries(en).map(([k,v])=>h('tr',{},h('td',{},k),h('td',{},v.capabilities.join(', ')),h('td',{},v.output_schema))))),
+ h('h2',{style:'margin-top:24px'},'Data sources'),h('table',{},h('thead',{},h('tr',{},h('th',{},'Source'),h('th',{},'Status'),h('th',{},'Terms'),h('th',{},'License note'))),h('tbody',{},co.map(c=>h('tr',{},h('td',{},c.name),h('td',{},h('span',{class:'tag '+(c.available?'ok':'warn')},c.available?'available':'unavailable: '+c.reason)),h('td',{},h('a',{href:c.terms_url,target:'_blank',rel:'noopener'},'terms')),h('td',{},c.license_note))))))}};
+async function acct(path){const m=$('#acctmsg');try{const headers={'Content-Type':'application/json'};if(path==='register'&&$('#key').value)headers['X-API-Key']=$('#key').value;const r=await fetch('/api/v1/auth/'+path,{method:'POST',headers,body:JSON.stringify({email:$('#em').value,password:$('#pw').value})});const b=await r.json();
+ if(!r.ok)throw new Error(typeof b.detail==='string'?b.detail:'invalid input (email format, password 10+ chars)');
+ if(path==='login'){st.token=b.token;m.className='sub';m.textContent='Logged in ('+b.role+').';projects();draw()}else{m.className='sub';m.textContent='Registered ('+b.role+'). Now log in.'}}catch(e){m.className='err';m.textContent=e.message}}
+$('#lg').onclick=()=>acct('login');$('#rg').onclick=()=>acct('register');
+projects();draw();
+</script></body></html>

@@ -1,0 +1,25 @@
+name: Noesis tests
+on:
+  pull_request:
+    paths:
+      - 'ares-noesis/**'
+      - '.github/workflows/noesis-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    if: ${{ !github.event.repository.private && github.event.repository.visibility == 'public' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ares-noesis
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - run: python3 -m venv .venv
+      - run: .venv/bin/python -m pip install -r requirements.lock
+      - run: .venv/bin/python -m pip check
+      - run: .venv/bin/python -m pytest -q

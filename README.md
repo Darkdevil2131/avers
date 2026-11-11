@@ -1,3 +1,3 @@
 # ARES / Noesis
 
-Evidence-first scientific research software. Development takes place on feature branches.
+The implementation, tests, and engineering notes are in [ares-noesis](ares-noesis/README.md).

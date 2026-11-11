@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    env_file: .env
+    environment:
+      NOESIS_DATABASE_URL: sqlite:////state/noesis.db
+      NOESIS_DATA_DIR: /state/data
+    ports: ["127.0.0.1:8000:8000"]
+    volumes: ["state:/state"]
+volumes:
+  state: {}
