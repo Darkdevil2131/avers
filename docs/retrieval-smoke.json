@@ -1,0 +1,78 @@
+{
+  "dataset": "10 synthetic paraphrase cases authored during implementation; not held-out scientific validation",
+  "results": [
+    {
+      "case": 0,
+      "lexical_top1": false,
+      "hybrid_top1": true,
+      "hybrid_recall3": true,
+      "mode": "hybrid"
+    },
+    {
+      "case": 1,
+      "lexical_top1": false,
+      "hybrid_top1": true,
+      "hybrid_recall3": true,
+      "mode": "hybrid"
+    },
+    {
+      "case": 2,
+      "lexical_top1": false,
+      "hybrid_top1": true,
+      "hybrid_recall3": true,
+      "mode": "hybrid"
+    },
+    {
+      "case": 3,
+      "lexical_top1": true,
+      "hybrid_top1": true,
+      "hybrid_recall3": true,
+      "mode": "hybrid"
+    },
+    {
+      "case": 4,
+      "lexical_top1": false,
+      "hybrid_top1": true,
+      "hybrid_recall3": true,
+      "mode": "hybrid"
+    },
+    {
+      "case": 5,
+      "lexical_top1": false,
+      "hybrid_top1": true,
+      "hybrid_recall3": true,
+      "mode": "hybrid"
+    },
+    {
+      "case": 6,
+      "lexical_top1": false,
+      "hybrid_top1": true,
+      "hybrid_recall3": true,
+      "mode": "hybrid"
+    },
+    {
+      "case": 7,
+      "lexical_top1": true,
+      "hybrid_top1": true,
+      "hybrid_recall3": true,
+      "mode": "hybrid"
+    },
+    {
+      "case": 8,
+      "lexical_top1": false,
+      "hybrid_top1": true,
+      "hybrid_recall3": true,
+      "mode": "hybrid"
+    },
+    {
+      "case": 9,
+      "lexical_top1": false,
+      "hybrid_top1": true,
+      "hybrid_recall3": true,
+      "mode": "hybrid"
+    }
+  ],
+  "lexical_top1": 0.2,
+  "hybrid_top1": 1.0,
+  "hybrid_recall3": 1.0
+}

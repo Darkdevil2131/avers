@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-export default function Scene({ sources, cited, reduced }) {
+export default function Scene({ sources, cited, reduced, activity, running }) {
   const root = useRef(null);
   const [fallback, setFallback] = useState(false);
   useEffect(() => {
@@ -36,6 +36,27 @@ export default function Scene({ sources, cited, reduced }) {
             objects.add(new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0x71926a, transparent: true, opacity: .5 })));
           }
         });
+        let frame=0;
+        const collecting=running && activity?.stage === 'spider_fetch';
+        const querying=running && activity?.stage === 'memory_retrieval';
+        if (collecting) {
+          const spider=new THREE.Group();
+          const material=new THREE.MeshBasicMaterial({color:0xd9f6aa});
+          spider.add(new THREE.Mesh(new THREE.SphereGeometry(.23,12,12),material));
+          const head=new THREE.Mesh(new THREE.SphereGeometry(.13,12,12),material);head.position.y=.28;spider.add(head);
+          for(let side of [-1,1]) for(let leg=0;leg<4;leg++) {
+            const y=(leg-1.5)*.15;
+            const points=[new THREE.Vector3(side*.13,y,0),new THREE.Vector3(side*.46,y+.2,0),new THREE.Vector3(side*.7,y-.15,0)];
+            spider.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0xd9f6aa})));
+          }
+          spider.position.set(0,1.2,1);objects.add(spider);
+          const tick=time=>{spider.position.x=Math.sin(time/900)*1.5;renderer.render(scene,camera);frame=requestAnimationFrame(tick)};
+          frame=requestAnimationFrame(tick);
+        }
+        if(querying){
+          const cylinder=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,.7,20),new THREE.MeshBasicMaterial({color:0x71926a,wireframe:true}));
+          cylinder.position.set(0,1.5,1);objects.add(cylinder);
+        }
         const resize = () => {
           const width = host.clientWidth, height = host.clientHeight;
           renderer.setSize(width, height);
@@ -50,6 +71,7 @@ export default function Scene({ sources, cited, reduced }) {
         };
         renderer.domElement.addEventListener('pointermove', move);
         cleanup = () => {
+          cancelAnimationFrame(frame);
           observer.disconnect();
           renderer.domElement.removeEventListener('pointermove', move);
           scene.traverse(object => { object.geometry?.dispose(); object.material?.dispose(); });
@@ -58,10 +80,11 @@ export default function Scene({ sources, cited, reduced }) {
       } catch { setFallback(true); }
     }).catch(() => setFallback(true));
     return () => { disposed = true; cleanup(); };
-  }, [sources, cited, reduced]);
+  }, [sources, cited, reduced, activity, running]);
   return <div className="scene" aria-label={'Knowledge map of ' + sources.length + ' stored sources'}>
     <div ref={root} className="scene-canvas" aria-hidden="true" />
     {(fallback || reduced) && <div className="scene-fallback"><span className="project-node">ARES</span>{sources.slice(0, 12).map((source, i) => <span key={source.id} className={cited.has(source.id) ? 'source-dot included' : 'source-dot'} title={source.title}>S{i + 1}</span>)}</div>}
-    {!sources.length && <p className="scene-empty">Your evidence map starts with a source.</p>}
+    {running && activity?.stage === 'spider_fetch' && <p className="scene-empty">Fetching {activity.payload.pmcid} from the open-access API</p>}
+    {!sources.length && activity?.stage !== 'spider_fetch' && <p className="scene-empty">Your evidence map starts with a source.</p>}
   </div>;
 }

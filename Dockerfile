@@ -10,6 +10,9 @@ WORKDIR /app
 COPY requirements.lock ./
 RUN pip install --no-cache-dir -r requirements.lock && useradd --uid 10001 --create-home ares
 COPY ares/ ./ares/
+COPY scripts/ ./scripts/
+COPY requirements-reasoner.txt ./
+ENV ORT_DISABLE_TELEMETRY=1 HF_HUB_DISABLE_TELEMETRY=1 DO_NOT_TRACK=1
 COPY --from=frontend /build/ares/static ./ares/static
 RUN mkdir state && chown ares:ares state
 USER 10001

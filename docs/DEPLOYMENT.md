@@ -16,3 +16,5 @@ python -m ares.cli verify-backup --file backups/ares-new.db
 Backups use SQLite's online backup API and verify integrity and foreign keys. For restore, stop API/worker, preserve the existing database and its WAL/SHM files separately, then copy a verified backup to ARES_DATABASE and restart. Tests restore into a separate database and read retained report data. Retain access secrets separately; they are not in the backup.
 
 Schema scripts are additive and idempotent. Roll back code only after checking schema compatibility, or restore a pre-upgrade backup. Migration downgrade tooling and production recovery objectives remain unimplemented.
+
+Optional dense and generative models require explicit preparation described in README, a persistent state/models and state/reasoner volume, and sufficient host resources. The base Docker recipe includes dense dependencies but not optional llama.cpp bindings; install requirements-reasoner.txt in an explicitly selected image variant before enabling ARES_REASONER_MODEL. No model or hosting cost is hidden behind startup. This configuration is not yet a tested production deployment.

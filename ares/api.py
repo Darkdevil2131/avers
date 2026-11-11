@@ -13,10 +13,11 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Str
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .database import AccessDenied, Database, now
+from .database import AccessDenied, StorageBudget, Database, now
 from .evidence import ClaimInput, EvidenceInput, HypothesisInput, assess
 from .providers import EuropePMC
 from .research import ResearchEngine
+from .retrieval import hybrid_search
 from .security import BodyLimit, RateLimit
 from .tools import CAPABILITIES, execute
 
@@ -48,6 +49,11 @@ class MemberInput(BaseModel):
     role: Literal["editor", "viewer"]
 
 
+class FeedbackInput(BaseModel):
+    source_id: str
+    relevant: bool
+
+
 class ToolInput(BaseModel):
     parameters: dict
 
@@ -60,10 +66,14 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
     digests = {user: hashlib.sha256(token.encode()).digest() for user, token in credentials.items()}
     storage = Database(database)
     engine = ResearchEngine(storage, provider or EuropePMC())
-    app = FastAPI(title="ARES", version="0.2.0")
+    app = FastAPI(title="ARES", version="0.3.0")
     app.add_middleware(BodyLimit)
     app.state.storage, app.state.engine = storage, engine
     limiter = RateLimit()
+
+    @app.exception_handler(StorageBudget)
+    async def storage_error(request, exc):
+        return JSONResponse({"detail":str(exc)},status_code=413)
 
     @app.exception_handler(AccessDenied)
     async def access_error(request, exc):
@@ -105,11 +115,11 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
     def health():
         with storage.connect() as db:
             db.execute("SELECT 1").fetchone()
-        return {"status": "ok", "mode": "deterministic-research", "version": "0.2.0"}
+        return {"status": "ok", "mode": "deterministic-research", "version": "0.3.0"}
 
     @app.get("/session")
     def session(user=Depends(authenticate)):
-        return {"username": user, "mode": "deterministic", "paid_services": False}
+        return {"username": user, "mode": "local-model-assisted" if os.environ.get("ARES_REASONER_MODEL") else "extractive", "paid_services": False}
 
     @app.post("/projects", status_code=201)
     def create_project(body: ProjectInput, user=Depends(limited)):
@@ -208,7 +218,7 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
 
         async def generate():
             cursor = after
-            for _ in range(120):
+            for _ in range(600):
                 if await request.is_disconnected():
                     return
                 batch = events(project_id, run_id, cursor, user)
@@ -356,6 +366,59 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             return [{**dict(row), "status": "hypothesis", "experiment_executed": False} for row in db.execute(
                 "SELECT * FROM hypotheses WHERE project_id=? ORDER BY created_at DESC LIMIT 100", (project_id,)
             )]
+
+    @app.get("/projects/{project_id}/sources/{source_id}/document")
+    def original_document(project_id: str, source_id: str, user=Depends(authenticate)):
+        with storage.connect() as db:
+            storage.authorize(db,project_id,user)
+            row=db.execute("SELECT d.metadata FROM documents d JOIN sources s ON s.id=d.source_id WHERE s.project_id=? AND s.id=?",(project_id,source_id)).fetchone()
+            if not row:raise HTTPException(404,"Original structured document not available")
+            return json.loads(row['metadata'])
+
+    @app.get("/projects/{project_id}/retrieve")
+    def retrieve(project_id: str, q: str = Query(min_length=3,max_length=2000), user=Depends(limited)):
+        with storage.connect() as db:
+            storage.authorize(db,project_id,user)
+            passages, details=hybrid_search(storage,db,project_id,q)
+            return {"passages":passages,"retrieval":details}
+
+    @app.post("/projects/{project_id}/runs/{run_id}/feedback")
+    def feedback(project_id: str, run_id: str, body: FeedbackInput, user=Depends(limited)):
+        with storage.connect() as db:
+            storage.authorize(db,project_id,user,owner=True)
+            require_run(db,project_id,run_id)
+            report=storage.report(db,project_id,run_id)
+            if not report or body.source_id not in {c['source_id'] for c in report['citations']}:
+                raise HTTPException(422,"Feedback must refer to a source cited in this report")
+            db.execute("INSERT INTO feedback(project_id,run_id,source_id,relevant,actor,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(project_id,run_id,source_id,actor) DO UPDATE SET relevant=excluded.relevant,created_at=excluded.created_at",(project_id,run_id,body.source_id,int(body.relevant),user,now()))
+            storage.audit(db,project_id,user,"relevance_feedback",{"run_id":run_id,**body.model_dump()})
+            return {"status":"saved","learning":"Future similar queries can use reviewed relevance feedback","truth_updated":False}
+
+    @app.get("/projects/{project_id}/memory")
+    def memory(project_id: str, user=Depends(authenticate)):
+        with storage.connect() as db:
+            storage.authorize(db,project_id,user)
+            result=[]
+            for row in db.execute("SELECT * FROM research_memory WHERE project_id=? ORDER BY created_at DESC LIMIT 100",(project_id,)):
+                item=dict(row);item["content"]=json.loads(item["content"])
+                report=storage.report(db,project_id,item["run_id"])
+                item["stale"]=bool(report and report["outdated_sources"])
+                result.append(item)
+            return result
+
+    @app.post("/projects/{project_id}/memory/{memory_id}/review")
+    def memory_review(project_id: str, memory_id: str, body: ReviewInput, user=Depends(limited)):
+        with storage.connect() as db:
+            storage.authorize(db,project_id,user,owner=True)
+            row=db.execute("SELECT * FROM research_memory WHERE id=? AND project_id=?",(memory_id,project_id)).fetchone()
+            if row is None:raise HTTPException(404,"Memory not found")
+            report=storage.report(db,project_id,row["run_id"])
+            if body.status=='active' and report["outdated_sources"]:
+                raise HTTPException(409,"Source reviews changed; run research again before approving memory")
+            status='approved' if body.status=='active' else 'rejected'
+            db.execute("UPDATE research_memory SET status=?,actor=? WHERE id=?",(status,user,memory_id))
+            storage.audit(db,project_id,user,"memory_reviewed",{"memory_id":memory_id,"status":status,"reason":body.reason})
+            return {"status":status,"model_weights_updated":False}
 
     static = Path(__file__).parent / "static"
     if static.exists():

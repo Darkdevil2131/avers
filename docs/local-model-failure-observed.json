@@ -1,0 +1,148 @@
+{
+  "dataset": "synthetic integration example, not scientific validation",
+  "report": {
+    "run_id": "e5387e17-d263-46d3-87d9-d95d50d03427",
+    "question": "How might humidity affect coating adhesion?",
+    "retrieval": {
+      "mode": "hybrid",
+      "dense_available": true,
+      "model": "sentence-transformers/all-MiniLM-L6-v2",
+      "indexed_passages": 1,
+      "fusion": "RRF k=60",
+      "similarity_is_truth_probability": false
+    },
+    "reasoner": {
+      "status": "completed",
+      "model_sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+      "model": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+      "paid_api_calls": 0,
+      "answer": "The hypothesis that humidity affects coating adhesion by reducing water uptake and subsequently decreasing adhesion is supported by the evidence that coating adhesion decreased after exposure to high humidity, with water uptake measured before the adhesion test.",
+      "answer_status": "model interpretation requiring review",
+      "scientific_validity": "unvalidated"
+    },
+    "findings": [
+      {
+        "source_id": "0f7d0cbd-c69c-4248-9c22-7a7877343415",
+        "citation": "S1",
+        "statement": "Synthetic observation: Coating adhesion decreased after exposure to high humidity.",
+        "start_offset": 0,
+        "end_offset": 82,
+        "measurements": [],
+        "study_design": null,
+        "context_verified": false,
+        "method": "extractive-pattern-v1",
+        "status": "candidate",
+        "limitations": [
+          "Sentence-level extraction; study context and scientific interpretation require review"
+        ]
+      }
+    ],
+    "critique": {
+      "potential_disagreements": [],
+      "study_identifier_groups": [
+        [
+          "S1"
+        ]
+      ],
+      "independence_verified": false,
+      "missing_checks": [
+        "Full study context",
+        "Risk of bias",
+        "Independent study identity",
+        "Expert scientific appraisal"
+      ],
+      "decision": "abstain_from_scientific_verdict",
+      "reason": "Extractive candidates and retrieval scores do not validate scientific support"
+    },
+    "hypotheses": [
+      {
+        "kind": "model_generated_candidate",
+        "statement": "Coating adhesion decreases with increased humidity due to reduced water uptake.",
+        "mechanism": "Water uptake is reduced by high humidity, leading to decreased adhesion.",
+        "falsification": "A testable candidate that would falsify this hypothesis is: 'If a coating is coated with a water-repellent material before exposure to high humidity, its adhesion will not decrease.' This would falsify the hypothesis because the coating would not absorb water, thus maintaining adhesion.",
+        "citation": "S1",
+        "basis_quote": "Synthetic observation: Coating adhesion decreased after exposure to high humidity. Water uptake was measured before the adhesion test.",
+        "source_id": "0f7d0cbd-c69c-4248-9c22-7a7877343415",
+        "limitations": [
+          "The evidence is observational and does not provide experimental data.",
+          "The hypothesis is based on a single observation and may not be universally applicable.",
+          "The mechanism and observation need to be tested experimentally to confirm the hypothesis."
+        ],
+        "status": "proposal_needs_review",
+        "novelty": "not assessed",
+        "experiment_executed": false,
+        "grounding": "quotation integrity checked; interpretation and mechanism unverified"
+      }
+    ],
+    "plan": {
+      "objective": "How might humidity affect coating adhesion?",
+      "task_type": "mechanism",
+      "search_terms": [
+        "adhesion",
+        "affect",
+        "coating",
+        "how",
+        "humidity",
+        "might"
+      ],
+      "decisions": [
+        {
+          "action": "retrieve_project_evidence",
+          "reason": "Inspect existing project evidence before requesting new documents"
+        },
+        {
+          "action": "check_context_and_counterevidence",
+          "reason": "Matching text alone cannot establish a scientific conclusion"
+        }
+      ],
+      "budgets": {
+        "search_requests": 2,
+        "fulltext_documents": 4,
+        "citation_depth": 1,
+        "passages": 8,
+        "deadline_seconds": 180
+      },
+      "planner": "explicit-policy-v1",
+      "general_reasoning_model": false
+    },
+    "assessment": "inconclusive",
+    "calibrated": false,
+    "summary": "The hypothesis that humidity affects coating adhesion by reducing water uptake and subsequently decreasing adhesion is supported by the evidence that coating adhesion decreased after exposure to high humidity, with water uptake measured before the adhesion test.",
+    "summary_status": "model interpretation requiring review",
+    "citations": [
+      {
+        "id": "0f7d0cbd-c69c-4248-9c22-7a7877343415:0",
+        "source_id": "0f7d0cbd-c69c-4248-9c22-7a7877343415",
+        "project_id": "05890878-e5cb-4185-b559-d2a9e8fadb09",
+        "start_offset": 0,
+        "end_offset": 134,
+        "text": "Synthetic observation: Coating adhesion decreased after exposure to high humidity. Water uptake was measured before the adhesion test.",
+        "url": "https://example.org/synthetic",
+        "digest": "dc4c55381a0c5b2aea54b57d450779a7472e5d7bf44a178e0dfcc42065782f30",
+        "license_status": "synthetic test fixture",
+        "retrieved_at": "2026-11-11T09:41:01.654107+00:00",
+        "title": "Synthetic coating observation",
+        "study_id": "https://example.org/synthetic",
+        "origin": "user_supplied",
+        "review_version": 0,
+        "semantic_similarity": 0.8831976056098938,
+        "retrieval_score": 0.03278688524590164,
+        "label": "S1",
+        "quote": "Synthetic observation: Coating adhesion decreased after exposure to high humidity. Water uptake was measured before the adhesion test."
+      }
+    ],
+    "limitations": [
+      "Lexical retrieval establishes relevance only.",
+      "Scientific support, study independence and context compatibility require review.",
+      "Only explicitly supported open licenses are ingested as full text; other results remain metadata.",
+      "Extracted findings are candidates, not independently validated claims."
+    ],
+    "next_steps": [
+      "Review study methods, population or material, conditions, units and measured outcomes.",
+      "Add primary evidence and actively search for counterevidence."
+    ],
+    "created_at": "2026-11-11T09:41:23.687195+00:00",
+    "markdown": "# Research evidence report\n\nHow might humidity affect coating adhesion?\n\nAssessment \u2014 inconclusive\n\nThe hypothesis that humidity affects coating adhesion by reducing water uptake and subsequently decreasing adhesion is supported by the evidence that coating adhesion decreased after exposure to high humidity, with water uptake measured before the adhesion test.\n\n## [S1] Synthetic coating observation\n\nSynthetic observation: Coating adhesion decreased after exposure to high humidity. Water uptake was measured before the adhesion test.\n\nhttps://example.org/synthetic\nSource SHA-256 dc4c55381a0c5b2aea54b57d450779a7472e5d7bf44a178e0dfcc42065782f30\n\n## Extracted candidate findings\n\n- [S1] Synthetic observation: Coating adhesion decreased after exposure to high humidity.\n## Review decision\n\nExtractive candidates and retrieval scores do not validate scientific support\n\n## Limitations\n\n- Lexical retrieval establishes relevance only.\n- Scientific support, study independence and context compatibility require review.\n- Only explicitly supported open licenses are ingested as full text; other results remain metadata.\n- Extracted findings are candidates, not independently validated claims.",
+    "outdated_sources": []
+  }
+}

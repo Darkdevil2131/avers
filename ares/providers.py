@@ -1,5 +1,7 @@
 """A bounded, keyless Europe PMC metadata adapter. No arbitrary URL fetch."""
 import json
+import re
+from .documents import parse_jats
 import threading
 import time
 import urllib.error
@@ -60,9 +62,25 @@ class EuropePMC:
                     "url": url, "title": title, "text": text[:100000],
                     "study_id": record.get("doi") or url,
                     "license_status": "bibliographic metadata; article rights require review",
-                    "origin": "europepmc_metadata",
+                    "origin": "europepmc_metadata", "pmcid": record.get("pmcid"),
+                    "is_open_access": record.get("isOpenAccess") == "Y",
                 })
             self.cache[key] = (time.monotonic(), results)
             if len(self.cache) > 100:
                 self.cache.pop(next(iter(self.cache)))
             return results
+
+    def fulltext(self, pmcid):
+        if not re.fullmatch(r"PMC[0-9]{1,12}",pmcid):
+            raise ProviderError("Invalid PMC identifier")
+        with self.lock:
+            delay=1.0-(time.monotonic()-self.last_request)
+            if delay>0:time.sleep(delay)
+            self.last_request=time.monotonic()
+            url="https://www.ebi.ac.uk/europepmc/webservices/rest/"+pmcid+"/fullTextXML"
+            try:
+                with self.opener.open(urllib.request.Request(url,headers={"User-Agent":"ARES/0.3"}),timeout=15) as response:
+                    raw=response.read(4_000_001)
+                return parse_jats(raw,pmcid)
+            except Exception as exc:
+                raise ProviderError("Full text unavailable, malformed, over budget, or license not permitted") from exc

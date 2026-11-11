@@ -15,6 +15,10 @@ def now():
     return datetime.now(timezone.utc).isoformat()
 
 
+class StorageBudget(Exception):
+    pass
+
+
 class AccessDenied(Exception):
     pass
 
@@ -70,6 +74,10 @@ class Database:
 
     def add_source(self, db, project_id, data, actor):
         digest = hashlib.sha256(data["text"].encode()).hexdigest()
+        existing=db.execute("SELECT id FROM sources WHERE project_id=? AND url=? AND digest=? AND license_status=?",(project_id,data['url'],digest,data['license_status'])).fetchone()
+        count,size=db.execute("SELECT count(*),coalesce(sum(length(text)),0) FROM sources WHERE project_id=?",(project_id,)).fetchone()
+        if not existing and (count>=1000 or size+len(data['text'])>20_000_000):
+            raise StorageBudget('Project source storage budget reached')
         db.execute("INSERT OR IGNORE INTO sources VALUES(?,?,?,?,?,?,?)",
                    (str(uuid4()), project_id, data["url"], data["text"], digest, data["license_status"], now()))
         source = dict(db.execute(
@@ -79,6 +87,11 @@ class Database:
         db.execute("INSERT OR IGNORE INTO source_details VALUES(?,?,?,?)",
                    (source["id"], data.get("title") or data["url"],
                     data.get("study_id") or data["url"], data.get("origin", "user_supplied")))
+        if data.get("document"):
+            document_size=db.execute("SELECT coalesce(sum(length(d.metadata)),0) FROM documents d JOIN sources s ON s.id=d.source_id WHERE s.project_id=?",(project_id,)).fetchone()[0]
+            if document_size+len(json.dumps(data['document']))>70_000_000:
+                raise StorageBudget('Project original-document storage budget reached')
+            db.execute("INSERT OR IGNORE INTO documents VALUES(?,?)", (source["id"], json.dumps(data["document"])))
         self.index_source(db, source)
         self.audit(db, project_id, actor, "source_ingested", {"source_id": source["id"], "digest": digest})
         return source
