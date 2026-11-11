@@ -1,4 +1,3 @@
-"""Authenticated research API and browser workspace."""
 import asyncio
 import hashlib
 import json
