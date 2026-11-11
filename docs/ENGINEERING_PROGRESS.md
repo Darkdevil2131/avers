@@ -2,11 +2,13 @@
 
 This section supersedes earlier release notes below.
 
+A subsequent 30-user HTTP test passed on SQLite and PostgreSQL: 1,200 timed requests, cross-project denial and duplicate-safe queued writes. PostgreSQL p95 was 245 ms on the test runner. See LOAD_VALIDATION.md; these are short API workloads, not a production or inference SLA.
+
 - GitHub run 43002167894 passed application/frontend tests, PostgreSQL 16 RLS tests (including 32 reads across 8 threads), live licensed full-text provenance checks, and Docker build/start.
 - Europe PMC and NCBI BioC successfully supplied real full-text articles. Original bytes, SHA-256, license metadata, and normalized passage locations are retained.
 - SciFact development evaluation: 27 claims, 1,000 documents, recall@8 100%, first-candidate rationale agreement 66.7%, candidate precision 33.3%. This is not sufficient evidence of scientific production readiness.
 - PostgreSQL backup/restore verification is included in the follow-up CI change; its latest run is authoritative.
-- A second evaluation result was lost with the temporary workspace and is not counted. Repository changes already pushed were restored from GitHub.
+- The initially lost second evaluation was rerun and persisted: 30 distinct claims, hybrid recall@8 96.7%, first-candidate agreement 63.3%, candidate precision 36.7%. See scifact-independent-check.json.
 - Public hosting, independent scientific acceptance, realistic production load testing, and browser/WebGL acceptance remain unfinished. No paid service or trial was provisioned.
 
 ## Historical release notes

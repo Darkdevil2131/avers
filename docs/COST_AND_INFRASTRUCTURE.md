@@ -9,3 +9,13 @@ GitHub verification uses a standard runner only when the repository is public, w
 The Work environment is temporary. An always-on public service and durable external storage have not been provisioned. Docker and shell instructions are packaging options for an already available host, not authorization to rent one.
 
 Optional inference runs entirely in the existing host using openly licensed downloaded MiniLM, cross-encoder and Qwen weights. No paid inference endpoint exists. CPU/RAM/storage are still required on that host; an always-on no-billing host has not been secured or provisioned.
+
+## Hosting feasibility checked 2026-11-11
+
+No compatible permanent no-charge host is connected. Render and Railway integrations are available but unconnected; connecting one alone would not establish adequate free capacity. No provider account was created.
+
+- Render's free web service has 512 MB RAM, ephemeral storage, and idle suspension. Free PostgreSQL expires after 30 days. Its documentation explicitly excludes production use of free instances. This cannot provide this system's durable full-model deployment as specified. https://render.com/docs/free and https://render.com/pricing
+- Railway's Free resource limit is 0.5 GB RAM; new account signup starts a trial. The trial is prohibited by this project's requirement. https://docs.railway.com/pricing/plans and https://docs.railway.com/pricing/free-trial
+- Hugging Face CPU Basic has no hourly hardware fee, but creating Docker/Gradio compute Spaces requires a paid subscription. It is not a zero-additional-cost deployment route here. https://huggingface.co/docs/hub/spaces-overview
+
+Do not substitute an expiring database, a paid subscription labeled free hardware, or a static frontend for a complete hosted product. An existing authorized cloud machine with adequate model capacity and durable storage, provided at no additional charge, is needed before actual deployment can proceed. Provider terms can change; none of these checks guarantees permanent pricing.

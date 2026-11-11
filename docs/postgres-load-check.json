@@ -1,0 +1,31 @@
+{
+  "scenario": "30 concurrent authenticated users, tenant reads/denials and idempotent queued writes",
+  "database": "postgresql",
+  "users": 30,
+  "rounds_per_user": 10,
+  "timed_requests": 1200,
+  "isolation_responses_checked": 600,
+  "expected_unique_runs": 300,
+  "seconds": 7.250900815999998,
+  "requests_per_second": 165.49667833713207,
+  "latency_ms": {
+    "p50": 169.88495200000386,
+    "p95": 245.23863699999993,
+    "p99": 270.35213999999996,
+    "max": 304.6742739999928
+  },
+  "errors": [],
+  "passed": true,
+  "limits": [
+    "Single HTTP API process on test host",
+    "No model inference, web collection, SSE soak or queue completion in this scenario",
+    "No uptime, deployment capacity or scientific reliability guarantee",
+    "30-user workload only; not an unlimited scale claim"
+  ],
+  "verification": {
+    "workflow_run": "https://github.com/Darkdevil2131/avers/actions/runs/43068258580",
+    "job_id": 130688910622,
+    "commit": "00a6d0a33a1ea8d68264a4cbe0ccf260de1e66ee"
+  }
+}
+
