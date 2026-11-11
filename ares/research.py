@@ -1,4 +1,3 @@
-"""Bounded deterministic research workflow with durable leases and citation snapshots."""
 import json
 import time
 
