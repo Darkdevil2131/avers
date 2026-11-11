@@ -1,4 +1,3 @@
-"""A bounded, keyless Europe PMC metadata adapter. No arbitrary URL fetch."""
 import json
 import re
 from .documents import parse_jats
