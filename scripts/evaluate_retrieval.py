@@ -1,10 +1,8 @@
-"""Small synthetic smoke evaluation, explicitly not a scientific retrieval benchmark."""
 import json
 import tempfile
 from pathlib import Path
 from ares.database import Database
 from ares.retrieval import hybrid_search
-
 CASES=[
  ('A car burns gasoline to power its internal combustion engine.','Which fuel powers an automobile?'),
  ('The canine was examined by a veterinarian for an injured paw.','Who treated the dog foot injury?'),

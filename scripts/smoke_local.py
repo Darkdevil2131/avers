@@ -1,4 +1,3 @@
-"""End-to-end synthetic RAG/model check; requires explicitly prepared local models."""
 import json
 import tempfile
 from pathlib import Path

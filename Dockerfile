@@ -4,7 +4,6 @@ COPY web/package*.json ./
 RUN npm ci
 COPY web/ ./
 RUN npm test && npm run build
-
 FROM python:3.12-slim
 WORKDIR /app
 COPY requirements.lock ./

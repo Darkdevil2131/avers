@@ -1,4 +1,3 @@
-"""Transactional project storage and immutable provenance."""
 import hashlib
 import json
 import re
@@ -7,22 +6,13 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
-
 STOPWORDS = set("a an the is are does do of for and or to in on with how what which can this that by from".split())
-
-
 def now():
     return datetime.now(timezone.utc).isoformat()
-
-
 class StorageBudget(Exception):
     pass
-
-
 class AccessDenied(Exception):
     pass
-
-
 class Database:
     def __new__(cls,path):
         if cls is Database and str(path).startswith(('postgresql://','postgres://')):
@@ -38,7 +28,6 @@ class Database:
                 db.executescript(migration.read_text())
             for row in db.execute("SELECT * FROM sources WHERE id NOT IN (SELECT source_id FROM passages)").fetchall():
                 self.index_source(db, dict(row))
-
     @contextmanager
     def connect(self):
         db = sqlite3.connect(self.path, timeout=15)
@@ -49,7 +38,6 @@ class Database:
                 yield db
         finally:
             db.close()
-
     def authorize(self, db, project_id, user, write=False, owner=False):
         row = db.execute(
             "SELECT role FROM memberships WHERE project_id=? AND username=?", (project_id, user)
@@ -57,15 +45,12 @@ class Database:
         if row is None or (write and row["role"] == "viewer") or (owner and row["role"] != "owner"):
             raise AccessDenied()
         return row["role"]
-
     def audit(self, db, project_id, actor, action, detail):
         db.execute("INSERT INTO audit_events(project_id,actor,action,detail,created_at) VALUES(?,?,?,?,?)",
                    (project_id, actor, action, json.dumps(detail), now()))
-
     def event(self, db, run_id, stage, payload):
         db.execute("INSERT INTO run_events(run_id,stage,payload,created_at) VALUES(?,?,?,?)",
                    (run_id, stage, json.dumps(payload), now()))
-
     def index_source(self, db, source):
         text = source["text"]
         for start in range(0, len(text), 900):
@@ -76,7 +61,6 @@ class Database:
             if not db.execute("SELECT 1 FROM passage_search WHERE passage_id=?", (passage_id,)).fetchone():
                 db.execute("INSERT INTO passage_search VALUES(?,?,?)",
                            (passage_id, source["project_id"], text[start:end]))
-
     def add_source(self, db, project_id, data, actor):
         digest = hashlib.sha256(data["text"].encode()).hexdigest()
         existing=db.execute("SELECT id FROM sources WHERE project_id=? AND url=? AND digest=? AND license_status=?",(project_id,data['url'],digest,data['license_status'])).fetchone()
@@ -100,7 +84,6 @@ class Database:
         self.index_source(db, source)
         self.audit(db, project_id, actor, "source_ingested", {"source_id": source["id"], "digest": digest})
         return source
-
     def search(self, db, project_id, question, limit=8):
         terms = list(dict.fromkeys(
             t.lower() for t in re.findall(r"\w+", question, flags=re.UNICODE)
@@ -124,14 +107,12 @@ class Database:
             ORDER BY rank,p.id LIMIT ?
         """, (query, project_id, limit)).fetchall()
         return [dict(row) for row in rows]
-
     def run(self, db, project_id, run_id):
         row = db.execute("""
             SELECT r.*,s.status,s.attempts,s.error,s.cancelled,s.external
             FROM runs r JOIN run_state s ON s.run_id=r.id WHERE r.id=? AND r.project_id=?
         """, (run_id, project_id)).fetchone()
         return dict(row) if row else None
-
     def report(self, db, project_id, run_id):
         row = db.execute("""
             SELECT reports.* FROM reports JOIN runs ON runs.id=reports.run_id

@@ -1,4 +1,3 @@
-"""Explicit free model download; runtime inference never downloads models."""
 import os
 os.environ['ORT_DISABLE_TELEMETRY']='1'
 os.environ['HF_HUB_DISABLE_TELEMETRY']='1'

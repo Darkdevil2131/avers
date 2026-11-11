@@ -1,16 +1,13 @@
-"""Local-only structured model inference. No network clients, tools or paid endpoints."""
 import hashlib
 import json
 import os
 from pathlib import Path
 import subprocess
 import sys
-
 SCHEMA={"type":"object","properties":{
  "answer":{"type":"string"},"hypothesis":{"type":"string"},"mechanism":{"type":"string"},"falsification":{"type":"string"},
  "citation":{"type":"string"},"quote":{"type":"string"},"limitations":{"type":"array","items":{"type":"string"}},
  },"required":["answer","hypothesis","mechanism","falsification","citation","quote","limitations"],"additionalProperties":False}
-
 def suggest(question,citations):
     path=os.environ.get('ARES_REASONER_MODEL')
     if not path or not Path(path).is_file():return {'status':'unavailable','reason':'No local reasoning model configured','proposals':[]}
@@ -43,7 +40,6 @@ def suggest(question,citations):
                 'proposals':[proposal],'scientific_validity':'unvalidated'}
     except (subprocess.TimeoutExpired,ValueError,KeyError,TypeError) as exc:
         return {'status':'rejected','reason':str(exc)[:300],'proposals':[]}
-
 def main():
     from llama_cpp import Llama
     path=Path(sys.argv[1]);payload=json.load(sys.stdin)
@@ -55,5 +51,4 @@ def main():
     with path.open('rb') as f:
         for block in iter(lambda:f.read(1024*1024),b''):sha.update(block)
     print(json.dumps({'proposal':json.loads(result['choices'][0]['message']['content']),'model_sha256':sha.hexdigest()}))
-
 if __name__=='__main__':main()

@@ -1,15 +1,11 @@
-"""Remote workspace operations."""
 import argparse
 import os
 import sqlite3
 import time
 from pathlib import Path
-
 from .database import Database
 from .providers import EuropePMC
 from .research import ResearchEngine
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["worker", "backup", "verify-backup"])
@@ -38,7 +34,5 @@ def main():
             if db.execute("PRAGMA foreign_key_check").fetchall():
                 raise SystemExit("Backup foreign key check failed")
             print("Backup integrity verified")
-
-
 if __name__ == "__main__":
     main()

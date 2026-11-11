@@ -1,10 +1,6 @@
-"""Context-aware summaries of reviewer-entered evidence. No truth probabilities."""
 import json
 from typing import Literal
-
 from pydantic import BaseModel, Field
-
-
 class Fingerprint(BaseModel):
     subject: str = Field(default="", max_length=300)
     variable: str = Field(default="", max_length=300)
@@ -15,13 +11,9 @@ class Fingerprint(BaseModel):
     outcome: str = Field(default="", max_length=500)
     measurement: str = Field(default="", max_length=300)
     timeframe: str = Field(default="", max_length=300)
-
-
 class ClaimInput(BaseModel):
     statement: str = Field(min_length=8, max_length=2000)
     fingerprint: Fingerprint
-
-
 class EvidenceInput(BaseModel):
     source_id: str
     start_offset: int = Field(ge=0)
@@ -29,15 +21,11 @@ class EvidenceInput(BaseModel):
     stance: Literal["supports", "contradicts", "neutral"]
     fingerprint: Fingerprint
     rationale: str = Field(min_length=8, max_length=2000)
-
-
 class HypothesisInput(BaseModel):
     statement: str = Field(min_length=8, max_length=2000)
     mechanism: str = Field(min_length=8, max_length=3000)
     falsification: str = Field(min_length=8, max_length=3000)
     predecessor: str | None = None
-
-
 def compare_context(left, right):
     mismatches, missing = [], []
     for field in Fingerprint.model_fields:
@@ -51,8 +39,6 @@ def compare_context(left, right):
     if missing:
         return {"state": "unverified", "fields": missing}
     return {"state": "compatible", "fields": []}
-
-
 def assess(db, claim):
     fingerprint = json.loads(claim["fingerprint"])
     rows = db.execute("""

@@ -1,27 +1,21 @@
-"""Bounded deterministic research workflow with durable leases and citation snapshots."""
 import json
 import time
-
 from .database import now
 from .providers import ProviderError
 from .retrieval import hybrid_search
 from .agents import plan, extract, critique, propose, proposal_critic
 from uuid import uuid4
 from .local_reasoner import suggest
-
 STAGES = (
     {"id": "plan", "requires": [], "tool": "plan"},
     {"id": "retrieve", "requires": ["plan"], "tool": "project_search"},
     {"id": "audit", "requires": ["retrieve"], "tool": "citation_audit"},
     {"id": "report", "requires": ["audit"], "tool": "write_report"},
 )
-
-
 class ResearchEngine:
     def __init__(self, database, provider):
         self.database = database
         self.provider = provider
-
     def execute(self, run_id):
         dbs = self.database
         with dbs.connect() as db:
@@ -86,11 +80,9 @@ class ResearchEngine:
                                 dbs.event(db,run_id,"document_ingested",{"source_id":source["id"],"pmcid":pmcid,"characters":len(document["text"]),"license":document["license_status"]})
                         except ProviderError as exc:
                             with dbs.connect() as db:dbs.event(db,run_id,"document_rejected",{"pmcid":pmcid,"message":str(exc)})
-
                 except ProviderError as exc:
                     with dbs.connect() as db:
                         dbs.event(db, run_id, "external_search_failed", {"message": str(exc)})
-
             with dbs.connect() as db:
                 db.execute("BEGIN IMMEDIATE")
                 state = db.execute("SELECT * FROM run_state WHERE run_id=?", (run_id,)).fetchone()
@@ -174,7 +166,6 @@ class ResearchEngine:
                 db.execute("UPDATE run_state SET status='failed',error='Research execution failed' WHERE run_id=?", (run_id,))
                 dbs.event(db, run_id, "failed", {"message": "Research execution failed"})
             raise
-
     def run_once(self):
         with self.database.connect() as db:
             db.execute("""

@@ -4,7 +4,6 @@ import Scene from './Scene';
 import Evidence from './Evidence';
 import Memory from './Memory';
 import './style.css';
-
 const STAGES = {
   reasoner_started: 'Preparing local reasoning', reasoner_completed: 'Local reasoning finished', planner_decision: 'Research strategy adjusted', queued: 'Research queued', plan: 'Research plan created',
   external_search_started: 'Searching Europe PMC',
@@ -14,7 +13,6 @@ const STAGES = {
 };
 const TERMINAL = new Set(['completed', 'failed', 'cancelled']);
 const safeLink = value => /^https?:\/\//i.test(value) ? value : undefined;
-
 export function App() {
   const [token, setToken] = useState(''), [entry, setEntry] = useState('');
   const [user, setUser] = useState(null), [error, setError] = useState('');
@@ -26,7 +24,6 @@ export function App() {
   const [reduced, setReduced] = useState(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const activeProject = useRef(null);
   const cited = useMemo(() => new Set(report?.citations.map(c => c.source_id) || []), [report]);
-
   async function api(path, options = {}, auth = token) {
     const response = await fetch(path, { ...options, headers: {
       Authorization: 'Bearer ' + auth, ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers,
@@ -35,7 +32,6 @@ export function App() {
     if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Check the form values and try again.');
     return data;
   }
-
   async function login(event) {
     event.preventDefault(); setBusy(true); setError('');
     try {
@@ -44,18 +40,15 @@ export function App() {
       setToken(entry); setEntry(''); setUser(session); setProjects(list); setProject(list[0] || null);
     } catch (exc) { setError(exc.message); } finally { setBusy(false); }
   }
-
   async function refresh(projectId) {
     const [sourceList, runList] = await Promise.all([api('/projects/' + projectId + '/sources'), api('/projects/' + projectId + '/runs')]);
     if (activeProject.current === projectId) { setSources(sourceList); setRuns(runList); }
   }
-
   useEffect(() => {
     activeProject.current = project?.id || null;
     setSources([]); setRuns([]); setRun(null); setReport(null); setEvents([]); setError('');
     if (project) refresh(project.id).catch(exc => setError(exc.message));
   }, [project?.id]);
-
   useEffect(() => {
     if (!run || !project) return;
     const controller = new AbortController();
@@ -93,7 +86,6 @@ export function App() {
     load().catch(exc => { if (exc.name !== 'AbortError') setError(exc.message); });
     return () => controller.abort();
   }, [run?.id, project?.id]);
-
   async function submit(event) {
     event.preventDefault(); if (!project) return;
     setBusy(true); setError('');
@@ -106,7 +98,6 @@ export function App() {
       await refresh(project.id);
     } catch (exc) { setError(exc.message); } finally { setBusy(false); }
   }
-
   async function createProject(event) {
     event.preventDefault(); setBusy(true);
     const name = new FormData(event.currentTarget).get('name');
@@ -115,7 +106,6 @@ export function App() {
       setProjects([created, ...projects]); setProject(created); setModal(null);
     } catch (exc) { setError(exc.message); } finally { setBusy(false); }
   }
-
   async function addSource(event) {
     event.preventDefault(); setBusy(true);
     const data = Object.fromEntries(new FormData(event.currentTarget));
@@ -124,7 +114,6 @@ export function App() {
       setModal(null); await refresh(project.id);
     } catch (exc) { setError(exc.message); } finally { setBusy(false); }
   }
-
   async function review(event) {
     event.preventDefault(); setBusy(true);
     const data = Object.fromEntries(new FormData(event.currentTarget));
@@ -134,7 +123,6 @@ export function App() {
       if (report) setReport(await api('/projects/' + project.id + '/runs/' + run.id + '/report'));
     } catch (exc) { setError(exc.message); } finally { setBusy(false); }
   }
-
   async function tool(event) {
     event.preventDefault(); setBusy(true);
     const values = new FormData(event.currentTarget).get('values').split(/[\s,]+/).filter(Boolean).map(Number);
@@ -143,13 +131,11 @@ export function App() {
       setModal({ type: 'tool', result: result.result });
     } catch (exc) { setError(exc.message); } finally { setBusy(false); }
   }
-
   function download() {
     const blob = new Blob([report.markdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob), link = document.createElement('a');
     link.href = url; link.download = 'ares-report.md'; link.click(); URL.revokeObjectURL(url);
   }
-
   useEffect(() => {
     if (user && !modal) return;
     const previous = document.activeElement;
@@ -167,7 +153,6 @@ export function App() {
     document.addEventListener('keydown', keys);
     return () => { document.removeEventListener('keydown', keys); previous?.focus(); };
   }, [modal?.type, !!user]);
-
   const selectedEvent = events.at(-1);
   const running = run && !TERMINAL.has(run.status);
   return <div className="app">
@@ -249,6 +234,5 @@ export function App() {
     </div></div>}
   </div>;
 }
-
 const root = document.getElementById('root');
 if (root) createRoot(root).render(<App/>);

@@ -1,4 +1,3 @@
-"""Rights-gated JATS ingestion. XML entities and remote references are never resolved."""
 import hashlib
 import base64
 import re

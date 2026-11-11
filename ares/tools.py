@@ -1,7 +1,5 @@
-"""Validated deterministic calculations on explicit user inputs."""
 import math
 import statistics
-
 CAPABILITIES = {
     "describe_sample": {
         "version": "1", "input": "2–10000 finite numeric observations",
@@ -21,14 +19,10 @@ UNITS = {
     "km": ("length", 1000), "s": ("time", 1), "min": ("time", 60),
     "h": ("time", 3600), "kg": ("mass", 1), "g": ("mass", .001),
 }
-
-
 def finite(value):
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or abs(value) > 1e100:
         raise ValueError("Values must be finite numbers within ±1e100")
     return value
-
-
 def execute(name, parameters):
     if name == "describe_sample":
         values = parameters.get("values")
