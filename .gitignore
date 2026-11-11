@@ -1,6 +1,13 @@
 __pycache__/
+*.py[cod]
 .pytest_cache/
-.env
+.venv/
+node_modules/
+ares/static/
 state/
 *.db
-.venv/
+*.db-*
+.env
+.env.*
+!.env.example
+coverage/
