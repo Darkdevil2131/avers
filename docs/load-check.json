@@ -1,0 +1,25 @@
+{
+  "scenario": "30 concurrent authenticated users, tenant reads/denials and idempotent queued writes",
+  "database": "sqlite",
+  "users": 30,
+  "rounds_per_user": 10,
+  "timed_requests": 1200,
+  "isolation_responses_checked": 600,
+  "expected_unique_runs": 300,
+  "seconds": 5.3849088160000065,
+  "requests_per_second": 222.8449990526262,
+  "latency_ms": {
+    "p50": 23.168873000031454,
+    "p95": 493.22166799993283,
+    "p99": 1662.9966100000502,
+    "max": 2961.1395829999765
+  },
+  "errors": [],
+  "passed": true,
+  "limits": [
+    "Single HTTP API process on test host",
+    "No model inference, web collection, SSE soak or queue completion in this scenario",
+    "No uptime, deployment capacity or scientific reliability guarantee",
+    "30-user workload only; not an unlimited scale claim"
+  ]
+}

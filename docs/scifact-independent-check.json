@@ -1,0 +1,447 @@
+{
+  "dataset": "SciFact development split restricted to independently preselected 1000-document corpus",
+  "source": "https://github.com/allenai/scifact",
+  "license": "https://github.com/allenai/scifact/blob/master/LICENSE.md",
+  "archive_sha256": "11c621288d41ac144d29b13b0f8503b3820b7d6e8b1f6ff24dff335c196d76be",
+  "document_seed": 20261112,
+  "excluded_prior_claim_ids": [
+    50,
+    56,
+    57,
+    100,
+    115,
+    180,
+    230,
+    415,
+    516,
+    521,
+    525,
+    536,
+    549,
+    674,
+    721,
+    723,
+    770,
+    823,
+    852,
+    922,
+    993,
+    1020,
+    1021,
+    1132,
+    1140,
+    1150,
+    1303
+  ],
+  "query_seed": 42,
+  "documents": 1000,
+  "passages": 2074,
+  "queries": 30,
+  "selection": "Shuffle corpus with fixed seed, keep 1000 documents; retain development claims whose complete gold evidence is in that corpus; shuffle eligible claims and take up to 30. Gold is used only for selection and scoring.",
+  "limitations": [
+    "Restricted-corpus evaluation is easier than full SciFact retrieval",
+    "Development set, not hidden official test set",
+    "Pretrained weights unchanged; extraction selection was revised after observing the baseline development result, so this is development evaluation, not an independent final acceptance test",
+    "This does not validate truth assessment, causal reasoning, or hypothesis quality",
+    "Extraction precision is exact sentence containment and does not measure semantic equivalence"
+  ],
+  "lexical_macro_recall8": 0.9,
+  "hybrid_macro_recall8": 0.9666666666666667,
+  "candidate_rationale_precision": 0.36666666666666664,
+  "first_candidate_rationale_accuracy": 0.6333333333333333,
+  "hybrid_active_queries": 30,
+  "reranked_queries": 30,
+  "seconds": 251.60027405000005,
+  "results": [
+    {
+      "claim_id": 129,
+      "gold_documents": [
+        "27768226"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 729,
+      "gold_documents": [
+        "26851674"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 744,
+      "gold_documents": [
+        "8460275"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 249,
+      "gold_documents": [
+        "1568684"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 847,
+      "gold_documents": [
+        "16787954"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 1041,
+      "gold_documents": [
+        "25254425"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 431,
+      "gold_documents": [
+        "28937856"
+      ],
+      "lexical_recall8": 0.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 239,
+      "gold_documents": [
+        "14079881"
+      ],
+      "lexical_recall8": 0.0,
+      "hybrid_recall8": 0.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 513,
+      "gold_documents": [
+        "13230773"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 248,
+      "gold_documents": [
+        "1568684"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 967,
+      "gold_documents": [
+        "8997410"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 338,
+      "gold_documents": [
+        "23349986"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 2,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 903,
+      "gold_documents": [
+        "10648422"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 2,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 236,
+      "gold_documents": [
+        "4388470"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 2,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 233,
+      "gold_documents": [
+        "4388470"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 2,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 1062,
+      "gold_documents": [
+        "20381484"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 130,
+      "gold_documents": [
+        "27768226"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 808,
+      "gold_documents": [
+        "36606083"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 3,
+      "gold_documents": [
+        "14717500"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 1271,
+      "gold_documents": [
+        "13768432"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 314,
+      "gold_documents": [
+        "4347374"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 718,
+      "gold_documents": [
+        "17587795"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 49,
+      "gold_documents": [
+        "5953485"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 2,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 1088,
+      "gold_documents": [
+        "37549932"
+      ],
+      "lexical_recall8": 0.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 1012,
+      "gold_documents": [
+        "9745001"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 781,
+      "gold_documents": [
+        "24338780"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 2,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 113,
+      "gold_documents": [
+        "6157837"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 837,
+      "gold_documents": [
+        "15928989"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 124,
+      "gold_documents": [
+        "4883040"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 3,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 1086,
+      "gold_documents": [
+        "39281140"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 2,
+      "first_candidate_matches_rationale": true
+    }
+  ]
+}
