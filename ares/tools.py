@@ -1,4 +1,3 @@
-"""Validated deterministic calculations on explicit user inputs."""
 import math
 import statistics
 
