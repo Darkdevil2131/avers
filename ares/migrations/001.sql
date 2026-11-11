@@ -1,4 +1,3 @@
-
 CREATE TABLE IF NOT EXISTS schema_versions(version INTEGER PRIMARY KEY);
 INSERT OR IGNORE INTO schema_versions VALUES(1);
 CREATE TABLE IF NOT EXISTS projects(
