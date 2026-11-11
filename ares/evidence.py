@@ -1,6 +1,5 @@
 import json
 from typing import Literal
-
 from pydantic import BaseModel, Field
 class Fingerprint(BaseModel):
     subject: str = Field(default="", max_length=300)
