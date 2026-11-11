@@ -5,7 +5,6 @@ from starlette.responses import JSONResponse
 class BodyLimit:
     def __init__(self, app, limit=512_000):
         self.app, self.limit = app, limit
-
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
@@ -23,14 +22,12 @@ class BodyLimit:
             if not message.get("more_body", False):
                 break
         consumed = False
-
         async def buffered():
             nonlocal consumed
             if not consumed:
                 consumed = True
                 return {"type": "http.request", "body": b"".join(parts), "more_body": False}
             return await receive()
-
         await self.app(scope, buffered, send)
 class RateLimit:
     def __init__(self, count=60, seconds=60):
