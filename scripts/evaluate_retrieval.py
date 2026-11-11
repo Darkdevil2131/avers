@@ -27,4 +27,3 @@ with tempfile.TemporaryDirectory() as directory:
    hybrid,status=hybrid_search(dbs,db,'p',q,limit=3)
    result.append({'case':i,'lexical_top1':bool(lexical and lexical[0]['source_id']==ids[i]),'hybrid_top1':bool(hybrid and hybrid[0]['source_id']==ids[i]),'hybrid_recall3':any(r['source_id']==ids[i] for r in hybrid),'mode':status['mode']})
  print(json.dumps({'dataset':'10 synthetic paraphrase cases authored during implementation; not held-out scientific validation','results':result,'lexical_top1':sum(x['lexical_top1'] for x in result)/len(result),'hybrid_top1':sum(x['hybrid_top1'] for x in result)/len(result),'hybrid_recall3':sum(x['hybrid_recall3'] for x in result)/len(result)},indent=2))
- 
