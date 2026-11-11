@@ -1,4 +1,3 @@
-"""Remote workspace operations."""
 import argparse
 import os
 import sqlite3
