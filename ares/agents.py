@@ -1,16 +1,10 @@
-"""Bounded evidence workers with explicit decision records and extractive outputs.
-These workers use transparent policies; they do not claim general scientific intelligence.
-"""
 import re
 from collections import Counter
-
 WORDS=re.compile(r'[A-Za-z][A-Za-z-]{2,}')
 STOP=set('the and with from that this were was are for not but study studies results effect effects'.split())
 DIRECTION=re.compile(r'\b(increas\w*|decreas\w*|reduc\w*|improv\w*|associated|correlat\w*|no significant|not associated|did not)\b',re.I)
 NUMBER=re.compile(r'(?<!\w)(?:n\s*=\s*)?[-+]?\d+(?:\.\d+)?\s*(?:%|mg|kg|mm|cm|°C|K|days?|hours?|months?|years?)?',re.I)
-
 def terms(value):return set(w.lower() for w in WORDS.findall(value))-STOP
-
 def plan(question):
     words=terms(question)
     kind='comparison' if re.search(r'\b(vs|versus|compare|better|outperform)\b',question,re.I) else 'mechanism' if re.search(r'\b(why|mechanism|cause|how)\b',question,re.I) else 'evidence_review'
@@ -19,7 +13,6 @@ def plan(question):
                          {'action':'check_context_and_counterevidence','reason':'Matching text alone cannot establish a scientific conclusion'}],
             'budgets':{'search_requests':2,'fulltext_documents':4,'citation_depth':1,'passages':8,'deadline_seconds':180},
             'planner':'explicit-policy-v1','general_reasoning_model':False}
-
 def extract(citations,question):
     """Extract candidates verbatim; no generated claims or guessed study attributes."""
     findings=[];q=terms(question)
@@ -38,7 +31,6 @@ def extract(citations,question):
                              'status':'candidate','limitations':['Sentence-level extraction; study context and scientific interpretation require review']})
             if len(findings)>=24:return findings
     return findings
-
 def critique(findings,citations):
     pairs=[]
     for index,left in enumerate(findings):
@@ -56,7 +48,6 @@ def critique(findings,citations):
     return {'potential_disagreements':pairs[:12],'study_identifier_groups':list(groups.values()),
             'independence_verified':False,'missing_checks':['Full study context','Risk of bias','Independent study identity','Expert scientific appraisal'],
             'decision':'abstain_from_scientific_verdict','reason':'Extractive candidates and retrieval scores do not validate scientific support'}
-
 def propose(findings,question):
     if not findings:return []
     anchor=findings[0]
@@ -67,8 +58,6 @@ def propose(findings,question):
              'experiment_plan':{'design':'Independent replication proposal','required_inputs':['Operational definitions','Population or material','Comparator or control','Measurement protocol','Effect estimate and variance','Domain-specific safety review'],
                                 'sample_size':None,'reason':'Sample size cannot be chosen without an effect target, variance, design, and error criteria'},
              'novelty':'not assessed','status':'proposal_needs_review','experiment_executed':False}]
-
-
 def proposal_critic(proposal):
     """Reject simple observable inconsistencies; passing is not scientific validation."""
     hypothesis=proposal.get('statement','').lower()
