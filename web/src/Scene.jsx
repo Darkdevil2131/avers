@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-
 export default function Scene({ sources, cited, reduced, activity, running }) {
   const root = useRef(null);
   const [fallback, setFallback] = useState(false);
