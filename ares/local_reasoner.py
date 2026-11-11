@@ -1,4 +1,3 @@
-"""Local-only structured model inference. No network clients, tools or paid endpoints."""
 import hashlib
 import json
 import os
