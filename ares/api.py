@@ -6,12 +6,10 @@ import secrets
 from pathlib import Path
 from typing import Literal
 from uuid import uuid4
-
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-
 from .database import AccessDenied, StorageBudget, Database, now
 from .evidence import ClaimInput, EvidenceInput, HypothesisInput, assess
 from .providers import EuropePMC
@@ -19,44 +17,28 @@ from .research import ResearchEngine
 from .retrieval import hybrid_search
 from .security import BodyLimit, RateLimit
 from .tools import CAPABILITIES, execute
-
-
 class ProjectInput(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-
-
 class RunInput(BaseModel):
     question: str = Field(min_length=8, max_length=2000)
     external: bool = False
-
-
 class SourceInput(BaseModel):
     url: str = Field(min_length=1, max_length=2000)
     text: str = Field(min_length=1, max_length=100000)
     license_status: str = Field(min_length=1, max_length=200)
     title: str = Field(default="", max_length=500)
     study_id: str = Field(default="", max_length=500)
-
-
 class ReviewInput(BaseModel):
     status: Literal["active", "retracted", "excluded"]
     reason: str = Field(min_length=8, max_length=2000)
-
-
 class MemberInput(BaseModel):
     username: str = Field(min_length=1, max_length=200)
     role: Literal["editor", "viewer"]
-
-
 class FeedbackInput(BaseModel):
     source_id: str
     relevant: bool
-
-
 class ToolInput(BaseModel):
     parameters: dict
-
-
 def create_app(database: Path, credentials: dict[str, str], *, provider=None, auto_process=True) -> FastAPI:
     if not credentials or len(set(credentials.values())) != len(credentials):
         raise ValueError("Configure distinct credentials for named users")
@@ -69,15 +51,12 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
     app.add_middleware(BodyLimit)
     app.state.storage, app.state.engine = storage, engine
     limiter = RateLimit()
-
     @app.exception_handler(StorageBudget)
     async def storage_error(request, exc):
         return JSONResponse({"detail":str(exc)},status_code=413)
-
     @app.exception_handler(AccessDenied)
     async def access_error(request, exc):
         return JSONResponse({"detail": "Project not found or action unavailable"}, status_code=404)
-
     @app.middleware("http")
     async def headers(request, call_next):
         response = await call_next(request)
@@ -89,7 +68,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             "img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'"
         )
         return response
-
     def authenticate(authorization: str = Header(default="")):
         scheme, _, token = authorization.partition(" ")
         digest = hashlib.sha256(token.encode()).digest()
@@ -98,28 +76,23 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                 if secrets.compare_digest(digest, expected):
                     return user
         raise HTTPException(401, "Valid bearer credentials required")
-
     def limited(user=Depends(authenticate)):
         if not limiter.allow(user):
             raise HTTPException(429, "Request budget reached; retry in one minute", headers={"Retry-After": "60"})
         return user
-
     def require_run(db, project_id, run_id):
         row = storage.run(db, project_id, run_id)
         if row is None:
             raise HTTPException(404, "Run not found")
         return row
-
-    @app.get("/health")
+     @app.get("/health")
     def health():
         with storage.connect() as db:
             db.execute("SELECT 1").fetchone()
         return {"status": "ok", "mode": "deterministic-research", "version": "0.3.0"}
-
     @app.get("/session")
     def session(user=Depends(authenticate)):
         return {"username": user, "mode": "local-model-assisted" if os.environ.get("ARES_REASONER_MODEL") else "extractive", "paid_services": False}
-
     @app.post("/projects", status_code=201)
     def create_project(body: ProjectInput, user=Depends(limited)):
         identifier = str(uuid4())
@@ -128,7 +101,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             db.execute("INSERT INTO memberships VALUES(?,?,?)", (identifier, user, "owner"))
             storage.audit(db, identifier, user, "project_created", {})
         return {"id": identifier, "name": body.name, "role": "owner"}
-
     @app.get("/projects")
     def projects(user=Depends(authenticate)):
         with storage.connect() as db:
@@ -136,7 +108,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                 SELECT p.id,p.name,m.role FROM projects p JOIN memberships m ON m.project_id=p.id
                 WHERE m.username=? ORDER BY p.rowid DESC
             """, (user,))]
-
     @app.put("/projects/{project_id}/members")
     def membership(project_id: str, body: MemberInput, user=Depends(limited)):
         with storage.connect() as db:
@@ -150,7 +121,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                        (project_id, body.username, body.role))
             storage.audit(db, project_id, user, "membership_changed", body.model_dump())
         return {"status": "saved"}
-
     @app.post("/projects/{project_id}/runs", status_code=201)
     def create_run(project_id: str, body: RunInput, tasks: BackgroundTasks,
                    user=Depends(limited), idempotency_key: str | None = Header(default=None, max_length=100)):
@@ -173,7 +143,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
         if auto_process:
             tasks.add_task(engine.execute, identifier)
         return {"id": identifier, "status": "queued", "assessment": "unverified"}
-
     @app.get("/projects/{project_id}/runs")
     def runs(project_id: str, user=Depends(authenticate)):
         with storage.connect() as db:
@@ -182,13 +151,11 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                 SELECT r.*,s.status,s.error FROM runs r JOIN run_state s ON s.run_id=r.id
                 WHERE r.project_id=? ORDER BY r.created_at DESC LIMIT 100
             """, (project_id,))]
-
     @app.get("/projects/{project_id}/runs/{run_id}")
     def run(project_id: str, run_id: str, user=Depends(authenticate)):
         with storage.connect() as db:
             storage.authorize(db, project_id, user)
             return require_run(db, project_id, run_id)
-
     @app.post("/projects/{project_id}/runs/{run_id}/cancel")
     def cancel(project_id: str, run_id: str, user=Depends(limited)):
         with storage.connect() as db:
@@ -198,7 +165,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                 db.execute("UPDATE run_state SET cancelled=1,status='cancelled' WHERE run_id=?", (run_id,))
                 storage.event(db, run_id, "cancelled", {"actor": user})
         return {"status": "cancelled" if state["status"] in {"queued", "running"} else state["status"]}
-
     @app.get("/projects/{project_id}/runs/{run_id}/events")
     def events(project_id: str, run_id: str, after: int = Query(default=0, ge=0), user=Depends(authenticate)):
         with storage.connect() as db:
@@ -207,14 +173,12 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             rows = db.execute("SELECT * FROM run_events WHERE run_id=? AND id>? ORDER BY id LIMIT 200",
                               (run_id, after)).fetchall()
         return [{**dict(row), "payload": json.loads(row["payload"])} for row in rows]
-
     @app.get("/projects/{project_id}/runs/{run_id}/stream")
     def stream(project_id: str, run_id: str, request: Request, after: int = Query(default=0, ge=0),
                user=Depends(authenticate)):
         with storage.connect() as db:
             storage.authorize(db, project_id, user)
             require_run(db, project_id, run_id)
-
         async def generate():
             cursor = after
             for _ in range(600):
@@ -231,7 +195,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                 yield ": waiting\n\n"
                 await asyncio.sleep(.5)
         return StreamingResponse(generate(), media_type="text/event-stream")
-
     @app.get("/projects/{project_id}/runs/{run_id}/report")
     def report(project_id: str, run_id: str, user=Depends(authenticate)):
         with storage.connect() as db:
@@ -241,19 +204,16 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             if result is None:
                 raise HTTPException(409, "Report is not ready")
             return result
-
     @app.get("/projects/{project_id}/runs/{run_id}/report.md")
     def download_report(project_id: str, run_id: str, user=Depends(authenticate)):
         result = report(project_id, run_id, user)
         return PlainTextResponse(result["markdown"], headers={"Content-Disposition": 'attachment; filename="ares-report.md"'})
-
     @app.post("/projects/{project_id}/sources", status_code=201)
     def source(project_id: str, body: SourceInput, user=Depends(limited)):
         with storage.connect() as db:
             storage.authorize(db, project_id, user, write=True)
             row = storage.add_source(db, project_id, body.model_dump(), user)
         return {**row, "origin": "user_supplied", "verification": "unverified"}
-
     @app.get("/projects/{project_id}/sources")
     def sources(project_id: str, user=Depends(authenticate)):
         with storage.connect() as db:
@@ -264,7 +224,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                 FROM sources s LEFT JOIN source_details d ON d.source_id=s.id
                 WHERE s.project_id=? ORDER BY s.created_at DESC LIMIT 500
             """, (project_id,))]
-
     @app.post("/projects/{project_id}/sources/{source_id}/review")
     def review_source(project_id: str, source_id: str, body: ReviewInput, user=Depends(limited)):
         with storage.connect() as db:
@@ -275,17 +234,14 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                        (source_id, body.status, body.reason, user, now()))
             storage.audit(db, project_id, user, "source_reviewed", {"source_id": source_id, **body.model_dump()})
         return {"status": body.status}
-
     @app.get("/projects/{project_id}/search")
     def search(project_id: str, q: str = Query(min_length=1, max_length=2000), user=Depends(limited)):
         with storage.connect() as db:
             storage.authorize(db, project_id, user)
             return storage.search(db, project_id, q)
-
     @app.get("/capabilities")
     def capabilities(user=Depends(authenticate)):
         return CAPABILITIES
-
     @app.post("/projects/{project_id}/tools/{name}")
     def tool(project_id: str, name: str, body: ToolInput, user=Depends(limited)):
         with storage.connect() as db:
@@ -296,7 +252,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                 raise HTTPException(422, str(exc)) from exc
             storage.audit(db, project_id, user, "tool_executed", {"name": name, "input": body.parameters, "output": result})
         return {"tool": name, "result": result, "version": CAPABILITIES[name]["version"]}
-
     @app.get("/projects/{project_id}/audit")
     def audit(project_id: str, user=Depends(authenticate)):
         with storage.connect() as db:
@@ -304,7 +259,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             return [dict(row) for row in db.execute(
                 "SELECT * FROM audit_events WHERE project_id=? ORDER BY id DESC LIMIT 100", (project_id,)
             )]
-
     @app.post("/projects/{project_id}/claims", status_code=201)
     def claim(project_id: str, body: ClaimInput, user=Depends(limited)):
         identifier = str(uuid4())
@@ -314,7 +268,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                        (identifier, project_id, body.statement, body.fingerprint.model_dump_json(), user, now()))
             storage.audit(db, project_id, user, "claim_recorded", {"claim_id": identifier})
         return {"id": identifier, "assessment": "unverified"}
-
     @app.get("/projects/{project_id}/claims")
     def claims(project_id: str, user=Depends(authenticate)):
         with storage.connect() as db:
@@ -322,7 +275,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             return [assess(db, row) for row in db.execute(
                 "SELECT * FROM claims WHERE project_id=? ORDER BY created_at DESC LIMIT 100", (project_id,)
             ).fetchall()]
-
     @app.post("/projects/{project_id}/claims/{claim_id}/evidence", status_code=201)
     def evidence(project_id: str, claim_id: str, body: EvidenceInput, user=Depends(limited)):
         identifier = str(uuid4())
@@ -340,7 +292,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                         body.stance, body.fingerprint.model_dump_json(), body.rationale, user, now()))
             storage.audit(db, project_id, user, "evidence_linked", {"claim_id": claim_id, "evidence_id": identifier})
             return assess(db, claim)
-
     @app.post("/projects/{project_id}/hypotheses", status_code=201)
     def hypothesis(project_id: str, body: HypothesisInput, user=Depends(limited)):
         identifier, version = str(uuid4()), 1
@@ -357,7 +308,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                         version, body.predecessor, user, now()))
             storage.audit(db, project_id, user, "hypothesis_proposed", {"id": identifier, "version": version})
         return {"id": identifier, "version": version, "status": "hypothesis", "experiment_executed": False}
-
     @app.get("/projects/{project_id}/hypotheses")
     def hypotheses(project_id: str, user=Depends(authenticate)):
         with storage.connect() as db:
@@ -365,7 +315,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             return [{**dict(row), "status": "hypothesis", "experiment_executed": False} for row in db.execute(
                 "SELECT * FROM hypotheses WHERE project_id=? ORDER BY created_at DESC LIMIT 100", (project_id,)
             )]
-
     @app.get("/projects/{project_id}/sources/{source_id}/document")
     def original_document(project_id: str, source_id: str, user=Depends(authenticate)):
         with storage.connect() as db:
@@ -373,14 +322,12 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             row=db.execute("SELECT d.metadata FROM documents d JOIN sources s ON s.id=d.source_id WHERE s.project_id=? AND s.id=?",(project_id,source_id)).fetchone()
             if not row:raise HTTPException(404,"Original structured document not available")
             return json.loads(row['metadata'])
-
     @app.get("/projects/{project_id}/retrieve")
     def retrieve(project_id: str, q: str = Query(min_length=3,max_length=2000), user=Depends(limited)):
         with storage.connect() as db:
             storage.authorize(db,project_id,user)
             passages, details=hybrid_search(storage,db,project_id,q)
             return {"passages":passages,"retrieval":details}
-
     @app.post("/projects/{project_id}/runs/{run_id}/feedback")
     def feedback(project_id: str, run_id: str, body: FeedbackInput, user=Depends(limited)):
         with storage.connect() as db:
@@ -392,8 +339,7 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             db.execute("INSERT INTO feedback(project_id,run_id,source_id,relevant,actor,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(project_id,run_id,source_id,actor) DO UPDATE SET relevant=excluded.relevant,created_at=excluded.created_at",(project_id,run_id,body.source_id,int(body.relevant),user,now()))
             storage.audit(db,project_id,user,"relevance_feedback",{"run_id":run_id,**body.model_dump()})
             return {"status":"saved","learning":"Future similar queries can use reviewed relevance feedback","truth_updated":False}
-
-    @app.get("/projects/{project_id}/memory")
+     @app.get("/projects/{project_id}/memory")
     def memory(project_id: str, user=Depends(authenticate)):
         with storage.connect() as db:
             storage.authorize(db,project_id,user)
@@ -404,7 +350,6 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                 item["stale"]=bool(report and report["outdated_sources"])
                 result.append(item)
             return result
-
     @app.post("/projects/{project_id}/memory/{memory_id}/review")
     def memory_review(project_id: str, memory_id: str, body: ReviewInput, user=Depends(limited)):
         with storage.connect() as db:
@@ -418,17 +363,13 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             db.execute("UPDATE research_memory SET status=?,actor=? WHERE id=?",(status,user,memory_id))
             storage.audit(db,project_id,user,"memory_reviewed",{"memory_id":memory_id,"status":status,"reason":body.reason})
             return {"status":status,"model_weights_updated":False}
-
     static = Path(__file__).parent / "static"
     if static.exists():
         app.mount("/assets", StaticFiles(directory=static / "assets"), name="assets")
-
         @app.get("/", include_in_schema=False)
         def workspace():
             return FileResponse(static / "index.html")
     return app
-
-
 def app_factory():
     credentials = json.loads(os.environ.get("ARES_CREDENTIALS", "{}"))
     return create_app(Path(os.environ.get("ARES_DATABASE", "state/ares.db")), credentials,
