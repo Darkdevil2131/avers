@@ -1,13 +1,10 @@
 from test_research import client, project, source
-
 CONTEXT = {
     "subject": "coating", "variable": "humidity", "units": "% RH",
     "population_or_material": "material A", "conditions": "25 C",
     "study_design": "bench experiment", "outcome": "retained strength",
     "measurement": "tensile test", "timeframe": "7 days",
 }
-
-
 def test_contextual_evidence_retraction_and_study_grouping(tmp_path):
     c = client(tmp_path)
     pid = project(c)
@@ -28,8 +25,6 @@ def test_contextual_evidence_retraction_and_study_grouping(tmp_path):
     assert result["assessment"] == "mixed"
     c.post(f"/projects/{pid}/sources/{s['id']}/review", json={"status": "retracted", "reason": "Synthetic retraction"})
     assert c.get(f"/projects/{pid}/claims").json()[0]["assessment"] == "retracted-source"
-
-
 def test_missing_and_mismatched_context_cannot_establish_support(tmp_path):
     c = client(tmp_path)
     pid = project(c)
@@ -48,8 +43,6 @@ def test_missing_and_mismatched_context_cannot_establish_support(tmp_path):
     foreign = project(c)
     body["end_offset"] = 30
     assert c.post(f"/projects/{foreign}/claims/{claim}/evidence", json=body).status_code == 404
-
-
 def test_hypothesis_history_keeps_predecessor_and_requires_falsification(tmp_path):
     c = client(tmp_path)
     pid = project(c)
