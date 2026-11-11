@@ -75,6 +75,12 @@ jobs:
               assert db.execute('SELECT id FROM sources').fetchall() != alice_sources
           print('Restored source/report data and tenant isolation verified')
           PYTHON
+      - name: Exercise 30 concurrent users over HTTP
+        env:
+          ARES_LOAD_DATABASE: postgresql://ares_app:fixture_runtime_only@localhost:5432/ares_test
+          ARES_LOAD_DISPOSABLE: 'yes'
+          ARES_LOAD_OUTPUT: /tmp/postgres-load-check.json
+        run: PYTHONPATH=. python scripts/load_check.py
   live-fulltext:
     if: github.event.repository.private == false
     runs-on: ubuntu-latest
