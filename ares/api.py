@@ -9,13 +9,14 @@ from uuid import uuid4
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from .database import AccessDenied, StorageBudget, Database, now
 from .evidence import ClaimInput, EvidenceInput, HypothesisInput, assess
 from .providers import EuropePMC
 from .research import ResearchEngine
 from .retrieval import hybrid_search
-from .security import BodyLimit, RateLimit
+from .security import BodyLimit, IngressLimit, RateLimit
 from .tools import CAPABILITIES, execute
 class ProjectInput(BaseModel):
     name: str = Field(min_length=1, max_length=200)
@@ -49,6 +50,7 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
     engine = ResearchEngine(storage, provider or EuropePMC())
     app = FastAPI(title="ARES", version="0.3.0")
     app.add_middleware(BodyLimit)
+    app.add_middleware(IngressLimit)
     app.state.storage, app.state.engine = storage, engine
     limiter = RateLimit()
     @app.exception_handler(StorageBudget)
@@ -90,8 +92,12 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
         return row
     @app.get("/health")
     def health():
-        with storage.connect() as db:
-            db.execute("SELECT 1").fetchone()
+        try:
+            with storage.connect() as db:
+                db.execute("SELECT 1").fetchone()
+        except Exception:
+            # Driver messages can contain connection details; never return them publicly.
+            return JSONResponse({"status": "unavailable"}, status_code=503)
         return {"status": "ok", "mode": "deterministic-research", "version": "0.3.0"}
     @app.get("/session")
     def session(user=Depends(authenticate)):
@@ -193,11 +199,11 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             for _ in range(600):
                 if await request.is_disconnected():
                     return
-                batch = events(project_id, run_id, cursor, user)
+                batch = await run_in_threadpool(events, project_id, run_id, cursor, user)
                 for event in batch:
                     cursor = event["id"]
                     yield f"id: {cursor}\ndata: {json.dumps(event)}\n\n"
-                state = run(project_id, run_id, user)
+                state = await run_in_threadpool(run, project_id, run_id, user)
                 if state["status"] in {"completed", "failed", "cancelled"}:
                     yield f"event: done\ndata: {json.dumps({'status': state['status']})}\n\n"
                     return

@@ -1,4 +1,5 @@
 import logging
+import pytest
 from fastapi.testclient import TestClient
 from ares.api import create_app
 from ares.cli import run_worker
@@ -69,3 +70,52 @@ def check_queue_admission(app):
 
 def test_sqlite_concurrent_queue_limit_and_idempotency(tmp_path):
     check_queue_admission(create_app(tmp_path/'queue.db',{'queue':'q'*40},auto_process=False))
+
+
+def check_lease_fencing(app, monkeypatch, outcome):
+    import ares.research as research
+    from ares.postgres import PRINCIPAL
+    c = TestClient(app, headers={'Authorization': 'Bearer ' + 'f' * 40})
+    pid = c.post('/projects', json={'name': 'Lease fencing'}).json()['id']
+    rid = c.post(f'/projects/{pid}/runs', json={'question': 'What does the evidence actually show?'}).json()['id']
+    dbs, engine = app.state.storage, app.state.engine
+    calls = []
+    def interleave(citations, question):
+        calls.append(1)
+        if len(calls) == 1:
+            if outcome == 'cancel_then_error':
+                with dbs.connect() as db:
+                    db.execute("UPDATE run_state SET cancelled=1,status='cancelled' WHERE run_id=?", (rid,))
+            else:
+                with dbs.connect() as db:
+                    db.execute('UPDATE run_state SET lease_until=0 WHERE run_id=?', (rid,))
+                if outcome != 'expire_only':
+                    assert engine.execute(rid) is True  # A replacement finishes before the old worker resumes.
+            if outcome in {'replacement_then_error', 'cancel_then_error'}:
+                raise RuntimeError('Old worker failed after losing ownership')
+        return []
+    monkeypatch.setattr(research, 'extract', interleave)
+    token = PRINCIPAL.set('fence')
+    try:
+        if outcome in {'replacement_then_error', 'cancel_then_error'}:
+            with pytest.raises(RuntimeError):
+                engine.execute(rid)
+        else:
+            assert engine.execute(rid) is False
+        with dbs.connect() as db:
+            state = db.execute('SELECT * FROM run_state WHERE run_id=?', (rid,)).fetchone()
+            reports = db.execute('SELECT count(*) FROM reports WHERE run_id=?', (rid,)).fetchone()[0]
+            memory = db.execute('SELECT count(*) FROM research_memory WHERE run_id=?', (rid,)).fetchone()[0]
+            failures = db.execute("SELECT count(*) FROM run_events WHERE run_id=? AND stage='failed'", (rid,)).fetchone()[0]
+        expected = 'cancelled' if outcome == 'cancel_then_error' else 'running' if outcome == 'expire_only' else 'completed'
+        assert state['status'] == expected and state['error'] is None
+        assert reports == memory == (1 if expected == 'completed' else 0)
+        assert failures == 0
+    finally:
+        PRINCIPAL.reset(token)
+
+
+@pytest.mark.parametrize('outcome', ['replacement', 'replacement_then_error', 'cancel_then_error', 'expire_only'])
+def test_stale_worker_cannot_publish_or_overwrite_status(tmp_path, monkeypatch, outcome):
+    app = create_app(tmp_path / 'fencing.db', {'fence': 'f' * 40}, auto_process=False)
+    check_lease_fencing(app, monkeypatch, outcome)
