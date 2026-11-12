@@ -46,7 +46,7 @@ class DenseIndex:
 
 DENSE=DenseIndex()
 
-def hybrid_search(storage,db,project_id,question,limit=8):
+def _hybrid_search(storage,db,project_id,question,limit=8):
     import numpy as np
     lexical=storage.search(db,project_id,question,limit=40)
     rows=[dict(r) for r in db.execute('''SELECT p.*,s.url,s.digest,s.license_status,s.created_at AS retrieved_at,
@@ -102,3 +102,25 @@ def hybrid_search(storage,db,project_id,question,limit=8):
         return results[:limit],{'reviewed_feedback_used':len(adjustments),'reranked':reranked,'mode':'hybrid','dense_available':True,'model':MODEL,'model_sha256':DENSE.artifact_hash,'indexed_passages':len(rows),'fusion':'RRF k=60','similarity_is_truth_probability':False}
     except (ImportError,OSError,ValueError,RuntimeError) as exc:
         return lexical[:limit],{'mode':'lexical','dense_available':False,'reason':'Embedding model unavailable; run model preparation on the host','error_type':type(exc).__name__}
+
+
+def expand_passages(db,passages):
+    from .text_spans import complete_passage
+    originals={};result=[];seen=set()
+    for passage in passages:
+        source_id=passage['source_id']
+        if source_id not in originals:
+            row=db.execute('SELECT text FROM sources WHERE id=?',(source_id,)).fetchone()
+            if row is None:raise ValueError('Retrieved source is unavailable')
+            originals[source_id]=row[0]
+        text=originals[source_id]
+        start,end=complete_passage(text,passage['start_offset'],passage['end_offset'])
+        key=(source_id,start,end)
+        if key in seen:continue
+        seen.add(key)
+        result.append(dict(passage,retrieved_start_offset=passage['start_offset'],retrieved_end_offset=passage['end_offset'],start_offset=start,end_offset=end,text=text[start:end]))
+    return result
+
+def hybrid_search(storage,db,project_id,question,limit=8):
+    passages,details=_hybrid_search(storage,db,project_id,question,limit)
+    return expand_passages(db,passages),dict(details,passage_boundaries='bounded-sentence-expansion-v1')

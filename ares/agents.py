@@ -1,5 +1,6 @@
 import re
 from collections import Counter
+from .text_spans import sentence_spans
 WORDS=re.compile(r'[A-Za-z][A-Za-z-]{2,}')
 STOP=set('the and with from that this were was are for not but study studies results effect effects'.split())
 DIRECTION=re.compile(r'\b(increas\w*|decreas\w*|reduc\w*|improv\w*|associated|correlat\w*|no significant|not associated|did not)\b',re.I)
@@ -20,13 +21,14 @@ def extract(citations,question):
     for citation in citations:
         if citation.get('origin','').endswith('_metadata'):continue
         text=citation['quote']
-        for match in re.finditer(r'.+?(?:(?<=[.!?])(?=\s+[A-Z])|\n|$)',text,flags=re.S):
-            value=match.group().strip()
+        if len(findings)>=80:break
+        for left,right in sentence_spans(text):
+            value=text[left:right]
             if len(value)<30 or not (terms(value)&q):continue
             identity=(citation['source_id'],value)
             if identity in seen:continue
             seen.add(identity)
-            start=citation['start_offset']+match.start()+len(match.group())-len(match.group().lstrip())
+            start=citation['start_offset']+left
             numbers=[m.group().strip() for m in NUMBER.finditer(value)]
             design=next((d for d in ['randomized','observational','retrospective','in vitro','simulation','cohort','systematic review'] if d in value.lower()),None)
             findings.append({'source_id':citation['source_id'],'citation':citation['label'],'statement':value,
