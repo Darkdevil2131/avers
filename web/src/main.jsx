@@ -5,6 +5,7 @@ import Evidence from './Evidence';
 import Memory from './Memory';
 import './style.css';
 const STAGES = {
+  collection_summary: 'Source collection recorded',
   reasoner_started: 'Preparing local reasoning', reasoner_completed: 'Local reasoning finished', planner_decision: 'Research strategy adjusted', queued: 'Research queued', plan: 'Research plan created',
   external_search_started: 'Searching Europe PMC',
   spider_fetch: 'Fetching open-access document', document_ingested: 'Full text stored', document_rejected: 'Document unavailable or license rejected', memory_retrieval: 'Retrieving project evidence', extract: 'Extracting candidate findings', critic: 'Checking evidence limits', hypothesize: 'Proposing follow-up tests', external_search_completed: 'Metadata received', external_search_failed: 'Source unavailable',
@@ -214,6 +215,13 @@ export function App() {
                 {report.outdated_sources.length > 0 && <p className="warning">Source reviews have changed since this report was saved. Start a new run to refresh the evidence.</p>}
                 <h3>{report.question}</h3>{report.summary_status && <small>{report.summary_status}</small>}<p>{report.summary}</p>{report.reasoner && <p>Local reasoning: {report.reasoner.status}{report.reasoner.reason ? ' — ' + report.reasoner.reason : ''}</p>}
                 {report.retrieval && <p className="warning">Retrieval: {report.retrieval.mode} · {report.retrieval.dense_available ? 'Dense embeddings + keyword search' : report.retrieval.reason || 'No indexed passages'}</p>}
+                {report.collection && <section aria-label="Source collection"><h3>Source collection</h3>
+                  <p>Status: {report.collection.status.replaceAll('_', ' ')} · {report.collection.metadata_records} metadata records · {report.collection.fulltext_stored} full texts stored</p>
+                  <p>{report.collection.scope}</p>
+                  {report.collection.bounded && <p className="warning">The collection limit was reached. This search is incomplete.</p>}
+                  {report.collection.errors.map((item,i)=><p className="warning" key={i}>{item.stage}: {item.message}</p>)}
+                  <details><summary>Search strategy and queries</summary>{report.collection.queries.map((item,i)=><p key={i}>{item.strategy}: {item.query}</p>)}</details>
+                </section>}
                 {report.findings?.length > 0 && <section><h3>Extracted candidate findings</h3><p>Exact source statements. Scientific meaning and study context still require review.</p>{report.findings.map((f,i)=><article className="citation" key={i}><span>{f.citation} · {f.method}</span><blockquote>{f.statement}</blockquote><p>Measurements found: {f.measurements.join(', ')||'none'}</p></article>)}</section>}
                 {report.critique && <details><summary>Evidence critic decision</summary><p>{report.critique.reason}</p>{report.critique.missing_checks.map(x=><p key={x}>{x}</p>)}{report.critique.potential_disagreements.map((x,i)=><p key={i}>{x.left} / {x.right}: {x.reason}</p>)}{report.critique.rejected_proposals?.map((r,i)=><p key={'rejected'+i}>Rejected model proposal: {r.check.reasons.join('; ')}</p>)}</details>}
                 {report.hypotheses?.map((h,i)=><article className="citation" key={'h'+i}><h3>Follow-up proposal · requires review</h3><p>{h.statement}</p><blockquote>{h.basis_quote}</blockquote><p>{h.mechanism}</p><p>Falsification: {h.falsification}</p><p>No experiment has been executed. Novelty has not been established.</p></article>)}

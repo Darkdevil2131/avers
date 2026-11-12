@@ -1,0 +1,21 @@
+{
+  "query": "malaria AND OPEN_ACCESS:Y",
+  "limit": 2,
+  "returned": 2,
+  "records": [
+    {
+      "title": "Temporal and climatic drivers of uncomplicated malaria in Ghana: Regional Generalised Additive and Generalised Additive Mixed Model analysis.",
+      "url": "https://europepmc.org/article/MED/42976118",
+      "origin": "europepmc_metadata",
+      "pmcid": "PMC13730369"
+    },
+    {
+      "title": "Therapeutic Potential of &lt;i&gt;Ocimum basilicum&lt;/i&gt; in Diabetes-Malaria Comorbidity: Evidence From Parasitemia, Biochemical, and Coagulation Outcomes in Mice.",
+      "url": "https://europepmc.org/article/MED/43011285",
+      "origin": "europepmc_metadata",
+      "pmcid": "PMC13749065"
+    }
+  ],
+  "scope": "Live metadata search only; not full-text or scientific validity verification",
+  "passed": true
+}

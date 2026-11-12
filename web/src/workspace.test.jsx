@@ -66,7 +66,7 @@ test('late report cannot replace the newly selected run',async()=>{
 test('workspace saves source and retains report on repeated history click',async()=>{
  const user=userEvent.setup();let source=null;
  const run={id:'r',question:'Humidity coating stability',status:'completed'};
- const report={question:run.question,summary:'Review required.',outdated_sources:[],citations:[],limitations:['No calibrated confidence'],markdown:'# Report'};
+ const report={question:run.question,summary:'Review required.',outdated_sources:[],citations:[],limitations:['No calibrated confidence'],markdown:'# Report',collection:{status:'partial',metadata_records:1,fulltext_stored:0,bounded:false,scope:'Absence of results is not evidence against a hypothesis.',errors:[{stage:'fulltext',message:'Full text unavailable'}],queries:[{strategy:'primary_evidence',query:'humidity'}]}};
  const fetcher=vi.spyOn(globalThis,'fetch').mockImplementation(async(url,options={})=>{
   if(url==='/session')return reply({username:'researcher'});
   if(url==='/projects')return reply([project]);
@@ -91,6 +91,8 @@ test('workspace saves source and retains report on repeated history click',async
  expect(source.text).toContain('Humidity');
  await user.click(screen.getByRole('button',{name:/Humidity coating stability/}));
  await screen.findByText('Review required.');
+ expect(screen.getByText('fulltext: Full text unavailable')).toBeTruthy();
+ expect(screen.getByText(/Status: partial/)).toBeTruthy();
  await user.click(screen.getByRole('button',{name:/Humidity coating stability/}));
  expect(screen.getByText('Review required.')).toBeTruthy();
  expect(fetcher.mock.calls.filter(([url])=>url.endsWith('/stream'))).toHaveLength(1);
