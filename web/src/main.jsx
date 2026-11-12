@@ -19,6 +19,7 @@ export function App() {
   const [projects, setProjects] = useState([]), [project, setProject] = useState(null);
   const [sources, setSources] = useState([]), [runs, setRuns] = useState([]);
   const [run, setRun] = useState(null), [events, setEvents] = useState([]), [report, setReport] = useState(null);
+  const [streamError, setStreamError] = useState(false), [streamAttempt, setStreamAttempt] = useState(0);
   const [question, setQuestion] = useState(''), [external, setExternal] = useState(false);
   const [tab, setTab] = useState('research'), [modal, setModal] = useState(null), [busy, setBusy] = useState(false);
   const [reduced, setReduced] = useState(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -52,6 +53,7 @@ export function App() {
   useEffect(() => {
     if (!run || !project) return;
     const controller = new AbortController();
+    setStreamError(false);
     const projectId = project.id, runId = run.id;
     let latest = 0;
     async function load() {
@@ -78,14 +80,23 @@ export function App() {
       }
       if (controller.signal.aborted || activeProject.current !== projectId) return;
       const status = await api(prefix);
+      if (controller.signal.aborted || activeProject.current !== projectId) return;
       setRun(status);
-      if (status.status === 'completed') setReport(await api(prefix + '/report'));
+      if (status.status === 'completed') {
+        const savedReport = await api(prefix + '/report');
+        if (controller.signal.aborted || activeProject.current !== projectId) return;
+        setReport(savedReport);
+      }
       await refresh(projectId);
-      if (!TERMINAL.has(status.status)) throw new Error('Event connection ended. Reopen this run to reconnect.');
+      if (!TERMINAL.has(status.status)) throw new Error('Event connection ended. Reconnect to follow this run.');
     }
-    load().catch(exc => { if (exc.name !== 'AbortError') setError(exc.message); });
+    load().catch(exc => {
+      if (!controller.signal.aborted && exc.name !== 'AbortError') {
+        setError(exc.message); setStreamError(true);
+      }
+    });
     return () => controller.abort();
-  }, [run?.id, project?.id]);
+  }, [run?.id, project?.id, streamAttempt]);
   async function submit(event) {
     event.preventDefault(); if (!project) return;
     setBusy(true); setError('');
@@ -173,11 +184,14 @@ export function App() {
       <div className="history">{runs.length ? runs.map(item => <button key={item.id} className={run?.id === item.id ? 'selected' : ''} onClick={() => { if (run?.id !== item.id) { setEvents([]); setReport(null); setRun(item); } setTab('research'); }}>
         <i className={'dot ' + item.status}/><span>{item.question}</span>
       </button>) : <p>Saved research will appear here.</p>}</div>
-      <div className="sidebar-bottom"><span className="avatar">{user?.username.slice(0, 1).toUpperCase() || 'A'}</span><div>{user?.username || 'Private workspace'}<small>₹0 external service spend</small></div>{user && <button aria-label="Sign out" onClick={() => location.reload()}>↪</button>}</div>
+      <div className="sidebar-bottom"><span className="avatar">{user?.username.slice(0, 1).toUpperCase() || 'A'}</span><div>{user?.username || 'Private workspace'}<small>Evidence stays reviewable</small></div>{user && <button aria-label="Sign out" onClick={() => location.reload()}>↪</button>}</div>
     </aside>
     <main inert={!user || !!modal}>
       <header><span>Workspace <span className="slash">/</span> {project?.name || 'Research'}</span><div className="header-right"><span className="status-light"/> {user?.mode || 'Research workspace'} <button className="quiet" onClick={() => setReduced(!reduced)} aria-pressed={reduced}>2D view</button></div></header>
       {error && <div className="error" role="alert">{error}<button onClick={() => setError('')} aria-label="Dismiss error">×</button></div>}
+      {streamError && run && <button className="secondary" onClick={() => {
+        setError(''); setStreamError(false); setEvents([]); setStreamAttempt(value => value + 1);
+      }}>Reconnect to run</button>}
       <div className="main-content">
         <div className="page-title"><div><p className="eyebrow">EVIDENCE FIRST</p><h1>{tab === 'research' ? 'Follow the evidence.' : tab === 'memory' ? 'Keep research reviewable.' : tab === 'evidence' ? 'Review the scientific context.' : 'Your research sources.'}</h1><p>{tab === 'research' ? 'Ask a question. Inspect the sources. Keep the evidence traceable.' : 'Versioned source text, provenance, and review status in one place.'}</p></div><button className="secondary" disabled={!project || project.role === 'viewer'} onClick={() => setModal({ type: 'source' })}>＋ Add source</button></div>
 
