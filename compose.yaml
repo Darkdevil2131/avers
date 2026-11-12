@@ -25,6 +25,7 @@ services:
     networks: [database]
   api:
     build: .
+    restart: on-failure:5
     environment:
       ARES_DATABASE: ${ARES_APP_DATABASE:?Set the ares_app DSN}
       ARES_CREDENTIALS: ${ARES_CREDENTIALS:?Configure distinct user tokens}
@@ -40,6 +41,7 @@ services:
     cap_drop: [ALL]
   worker:
     build: .
+    restart: on-failure:5
     command: [python, -m, ares.cli, worker]
     environment:
       ARES_WORKER_DATABASE: ${ARES_WORKER_DATABASE:?Set the ares_worker DSN}
