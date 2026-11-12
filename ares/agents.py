@@ -1,5 +1,6 @@
 import re
 from collections import Counter
+from .text_spans import sentence_spans
 WORDS=re.compile(r'[A-Za-z][A-Za-z-]{2,}')
 STOP=set('the and with from that this were was are for not but study studies results effect effects'.split())
 DIRECTION=re.compile(r'\b(increas\w*|decreas\w*|reduc\w*|improv\w*|associated|correlat\w*|no significant|not associated|did not)\b',re.I)
@@ -20,19 +21,20 @@ def extract(citations,question):
     for citation in citations:
         if citation.get('origin','').endswith('_metadata'):continue
         text=citation['quote']
-        for match in re.finditer(r'.+?(?:(?<=[.!?])(?=\s+[A-Z])|\n|$)',text,flags=re.S):
-            value=match.group().strip()
+        if len(findings)>=80:break
+        for left,right in sentence_spans(text):
+            value=text[left:right]
             if len(value)<30 or not (terms(value)&q):continue
             identity=(citation['source_id'],value)
             if identity in seen:continue
             seen.add(identity)
-            start=citation['start_offset']+match.start()+len(match.group())-len(match.group().lstrip())
+            start=citation['start_offset']+left
             numbers=[m.group().strip() for m in NUMBER.finditer(value)]
             design=next((d for d in ['randomized','observational','retrospective','in vitro','simulation','cohort','systematic review'] if d in value.lower()),None)
             findings.append({'source_id':citation['source_id'],'citation':citation['label'],'statement':value,
                              'start_offset':start,'end_offset':start+len(value),'measurements':numbers,
                              'study_design':design,'context_verified':False,'method':'extractive-pattern-v1',
-                             'status':'candidate','limitations':['Sentence-level extraction; study context and scientific interpretation require review']})
+                             'passage_relevance_score':citation.get('rerank_score'),'status':'candidate','limitations':['Sentence-level extraction; study context and scientific interpretation require review']})
             if len(findings)>=80:break
     if not findings:return []
     try:
@@ -40,8 +42,9 @@ def extract(citations,question):
         scores=DENSE.rerank(question,[f['statement'] for f in findings])
         for finding,score in zip(findings,scores):
             finding['sentence_relevance_score']=float(score)
-            finding['method']='sentence-reranker-v1'
-        findings.sort(key=lambda f:-f['sentence_relevance_score'])
+            finding['selection_score']=float(score) if finding['passage_relevance_score'] is None else .75*float(score)+.25*float(finding['passage_relevance_score'])
+            finding['method']='context-weighted-sentence-reranker-v2'
+        findings.sort(key=lambda f:-f['selection_score'])
     except (ImportError,OSError,ValueError,RuntimeError):
         findings=[f for f in findings if DIRECTION.search(f['statement'])]
     # Keep a small review queue; scores measure relevance, never entailment/truth.

@@ -21,7 +21,7 @@ Optional dense and generative models require explicit preparation described in R
 
 ## PostgreSQL deployment on an existing authorized host
 
-The supplied compose.yaml separates database, administrator migration, API, and worker services. The database has no published port; the API binds localhost only. Put an authenticated HTTPS proxy in front of it before any public access. The API and worker run without added capabilities on read-only root filesystems, with writable state volumes and temporary directories. The full Compose topology has not yet been acceptance-tested.
+The supplied compose.yaml separates database, administrator migration, API, and worker services. The database has no published port; the API binds localhost only. Put an authenticated HTTPS proxy in front of it before any public access. The API and worker run without added capabilities on read-only root filesystems, with writable state volumes and temporary directories. The compose-workflow CI job now exercises the full API/database/worker topology and persistence after restart; check the latest run before deploying. It excludes optional generative models.
 
 Use a dedicated PostgreSQL database. Supply these through the host's secret environment, never committed files:
 
@@ -37,3 +37,5 @@ Prepare models explicitly in the shared state volume via the worker service (whi
 For PostgreSQL, use pg_dump and restore into a separate database with psql -v ON_ERROR_STOP=1. The SQLite CLI backup commands deliberately refuse PostgreSQL DSNs. CI restores a disposable database and checks retained reports plus RLS isolation as the restricted application role. Database dumps do not back up cluster-wide role passwords or external model volumes: retain role provisioning, secrets, and model manifests separately. Measure recovery time and backup retention on the actual deployment before claiming production recovery objectives.
 
 No permanent no-charge host is connected. No trial, billing change, or paid deployment has been authorized or executed.
+
+The API uses an ingress network in addition to the private database network so the localhost-only published port is reachable. This permits API egress; it is not an egress firewall. PostgreSQL remains unpublished on the internal network. A public host still needs an HTTPS proxy and operational controls.

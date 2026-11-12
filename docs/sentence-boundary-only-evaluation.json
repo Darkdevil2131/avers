@@ -1,0 +1,407 @@
+{
+  "scope": "Paired development regression on the previously inspected 30-claim sample, not independent acceptance",
+  "claims": 30,
+  "corpus_documents": 1000,
+  "pipeline_change": "Bounded sentence expansion with exact offsets; abbreviation-aware splitting; global candidate cap",
+  "results": [
+    {
+      "claim_id": 129,
+      "before": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 729,
+      "before": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 744,
+      "before": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 249,
+      "before": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 847,
+      "before": {
+        "top1": false,
+        "correct": 0,
+        "candidates": 3
+      },
+      "after": {
+        "top1": false,
+        "correct": 0,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 1041,
+      "before": {
+        "top1": false,
+        "correct": 0,
+        "candidates": 3
+      },
+      "after": {
+        "top1": false,
+        "correct": 0,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 431,
+      "before": {
+        "top1": false,
+        "correct": 0,
+        "candidates": 3
+      },
+      "after": {
+        "top1": false,
+        "correct": 0,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 239,
+      "before": {
+        "top1": false,
+        "correct": 0,
+        "candidates": 3
+      },
+      "after": {
+        "top1": false,
+        "correct": 0,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 513,
+      "before": {
+        "top1": false,
+        "correct": 0,
+        "candidates": 3
+      },
+      "after": {
+        "top1": false,
+        "correct": 0,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 248,
+      "before": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 967,
+      "before": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 338,
+      "before": {
+        "top1": true,
+        "correct": 2,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 2,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 903,
+      "before": {
+        "top1": true,
+        "correct": 2,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 2,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 236,
+      "before": {
+        "top1": true,
+        "correct": 2,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 2,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 233,
+      "before": {
+        "top1": true,
+        "correct": 2,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 2,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 1062,
+      "before": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 130,
+      "before": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 808,
+      "before": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 3,
+      "before": {
+        "top1": false,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": false,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 1271,
+      "before": {
+        "top1": false,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": false,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 314,
+      "before": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 718,
+      "before": {
+        "top1": false,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": false,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 49,
+      "before": {
+        "top1": true,
+        "correct": 2,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 2,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 1088,
+      "before": {
+        "top1": false,
+        "correct": 0,
+        "candidates": 3
+      },
+      "after": {
+        "top1": false,
+        "correct": 0,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 1012,
+      "before": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 781,
+      "before": {
+        "top1": false,
+        "correct": 2,
+        "candidates": 3
+      },
+      "after": {
+        "top1": false,
+        "correct": 2,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 113,
+      "before": {
+        "top1": false,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": false,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 837,
+      "before": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 1,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 124,
+      "before": {
+        "top1": true,
+        "correct": 3,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 2,
+        "candidates": 3
+      }
+    },
+    {
+      "claim_id": 1086,
+      "before": {
+        "top1": true,
+        "correct": 2,
+        "candidates": 3
+      },
+      "after": {
+        "top1": true,
+        "correct": 2,
+        "candidates": 3
+      }
+    }
+  ],
+  "seconds": 50.11017918099998,
+  "before": {
+    "first_candidate_correct": 19,
+    "candidate_precision": 0.36666666666666664
+  },
+  "after": {
+    "first_candidate_correct": 19,
+    "candidate_precision": 0.35555555555555557
+  }
+}

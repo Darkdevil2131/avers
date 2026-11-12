@@ -14,3 +14,5 @@ The product is not complete or ready to claim scientific reliability.
 - Container build and startup pass CI. No public production deployment, visual browser/WebGL acceptance, sustained production/inference load certification, or scientific expert validation has been completed.
 
 A short 30-user HTTP workload passes with PostgreSQL and SQLite. It covers source isolation and queued writes, not model inference or sustained production operation. See LOAD_VALIDATION.md.
+
+The November 12 selection revision improves first-choice matches in small paired samples but loses aggregate candidate precision on distinct claims. Exact results and live/Compose workflow boundaries are in IMPROVEMENTS_2026_11_12.md. These checks do not turn the system into a scientifically validated autonomous researcher.

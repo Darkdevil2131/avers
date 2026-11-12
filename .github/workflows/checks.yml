@@ -110,3 +110,45 @@ jobs:
           done
           docker logs ares-check
           exit 1
+
+  compose-workflow:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ARES_DB_ADMIN_PASSWORD: fixture_admin_0000000000000000000000000000
+      ARES_DB_APP_PASSWORD: fixture_app_000000000000000000000000000000
+      ARES_DB_WORKER_PASSWORD: fixture_worker_00000000000000000000000000
+      ARES_ADMIN_DATABASE: postgresql://postgres:fixture_admin_0000000000000000000000000000@database:5432/ares
+      ARES_APP_DATABASE: postgresql://ares_app:fixture_app_000000000000000000000000000000@database:5432/ares
+      ARES_WORKER_DATABASE: postgresql://ares_worker:fixture_worker_00000000000000000000000000@database:5432/ares
+      ARES_CREDENTIALS: '{"fixture":"ffffffffffffffffffffffffffffffffffffffff","outsider":"oooooooooooooooooooooooooooooooooooooooo"}'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start isolated API, worker and PostgreSQL stack
+        run: docker compose up --build -d
+      - name: Verify real queued report workflow
+        run: python scripts/compose_check.py
+      - name: Verify persistence after API and worker restart
+        run: |
+          docker compose restart api worker
+          python - <<'PYTHON'
+          import json,os,time,urllib.request,urllib.error,http.client
+          state=json.load(open('/tmp/ares-compose-check.json'))
+          url='http://127.0.0.1:8000/projects/'+state['project']+'/runs/'+state['run']+'/report'
+          for _ in range(60):
+              try:
+                  req=urllib.request.Request(url,headers={'Authorization':'Bearer '+json.loads(os.environ['ARES_CREDENTIALS'])['fixture']})
+                  with urllib.request.urlopen(req,timeout=5) as response:report=json.load(response)
+                  assert report['citations'] and report['assessment']=='inconclusive'
+                  print('Persisted cited report survives service restart')
+                  break
+              except (OSError,http.client.HTTPException):time.sleep(1)
+          else:raise RuntimeError('Report unavailable after restart')
+          PYTHON
+      - name: Show service logs on failure
+        if: failure()
+        run: docker compose logs --tail=80 api worker migrate
+      - name: Remove disposable services and volumes
+        if: always()
+        run: docker compose down -v
