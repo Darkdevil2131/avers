@@ -35,8 +35,10 @@ class ResearchEngine:
             deadline=time.monotonic()+180
             def stopped():
                 with dbs.connect() as check:
-                    cancelled=check.execute("SELECT cancelled FROM run_state WHERE run_id=?",(run_id,)).fetchone()[0]
-                return cancelled or time.monotonic()>deadline
+                    current=check.execute("SELECT * FROM run_state WHERE run_id=?",(run_id,)).fetchone()
+                return (current['cancelled'] or current['status'] != 'running'
+                        or current['attempts'] != claimed['attempts']
+                        or current['lease_until'] <= time.time() or time.monotonic()>deadline)
             if claimed["external"]:
                 with dbs.connect() as db:
                     dbs.event(db, run_id, "external_search_started", {"provider": "Europe PMC"})
@@ -86,6 +88,8 @@ class ResearchEngine:
             with dbs.connect() as db:
                 db.execute("BEGIN IMMEDIATE")
                 state = db.execute("SELECT * FROM run_state WHERE run_id=?", (run_id,)).fetchone()
+                if state['attempts'] != claimed['attempts'] or state['lease_until'] <= time.time():
+                    return False
                 if state["cancelled"]:
                     db.execute("UPDATE run_state SET status='cancelled' WHERE run_id=?", (run_id,))
                     dbs.event(db, run_id, "cancelled", {})
@@ -121,7 +125,14 @@ class ResearchEngine:
             criticism['rejected_proposals']=rejected
             with dbs.connect() as db:
                 db.execute("BEGIN IMMEDIATE")
-                if db.execute("SELECT cancelled FROM run_state WHERE run_id=?",(run_id,)).fetchone()[0]:return True
+                # Lock and fence the final transaction against cancellation and lease recovery.
+                # PostgreSQL rechecks this predicate after waiting for a concurrent updater.
+                owned = db.execute("""UPDATE run_state SET lease_until=lease_until
+                    WHERE run_id=? AND status='running' AND cancelled=0
+                    AND attempts=? AND lease_until>? RETURNING run_id""",
+                    (run_id, claimed['attempts'], time.time())).fetchone()
+                if owned is None:
+                    return False
                 dbs.event(db,run_id,"reasoner_completed",{k:v for k,v in inference.items() if k!='proposals'})
                 dbs.event(db,run_id,"extract",{"candidate_claims":len(findings),"methods":sorted({finding["method"] for finding in findings})})
                 dbs.event(db,run_id,"critic",criticism)
@@ -163,8 +174,12 @@ class ResearchEngine:
             return True
         except Exception:
             with dbs.connect() as db:
-                db.execute("UPDATE run_state SET status='failed',error='Research execution failed' WHERE run_id=?", (run_id,))
-                dbs.event(db, run_id, "failed", {"message": "Research execution failed"})
+                owned = db.execute("""UPDATE run_state SET status='failed',lease_until=0,error='Research execution failed'
+                    WHERE run_id=? AND status='running' AND cancelled=0
+                    AND attempts=? AND lease_until>? RETURNING run_id""",
+                    (run_id, claimed['attempts'], time.time())).fetchone()
+                if owned:
+                    dbs.event(db, run_id, "failed", {"message": "Research execution failed"})
             raise
     def run_once(self):
         with self.database.connect() as db:

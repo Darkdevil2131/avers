@@ -60,3 +60,10 @@ def test_postgres_concurrent_queue_admission():
     from test_worker_resilience import check_queue_admission
     from ares.api import create_app
     check_queue_admission(create_app(os.environ['ARES_TEST_POSTGRES'],{'queue':'q'*40},auto_process=False))
+
+def test_postgres_worker_lease_fencing(monkeypatch):
+    from test_worker_resilience import check_lease_fencing
+    from ares.api import create_app
+    app = create_app(os.environ['ARES_TEST_POSTGRES'], {'fence': 'f'*40}, auto_process=False)
+    for outcome in ['replacement', 'replacement_then_error', 'cancel_then_error', 'expire_only']:
+        check_lease_fencing(app, monkeypatch, outcome)
