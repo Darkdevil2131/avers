@@ -34,7 +34,7 @@ def extract(citations,question):
             findings.append({'source_id':citation['source_id'],'citation':citation['label'],'statement':value,
                              'start_offset':start,'end_offset':start+len(value),'measurements':numbers,
                              'study_design':design,'context_verified':False,'method':'extractive-pattern-v1',
-                             'status':'candidate','limitations':['Sentence-level extraction; study context and scientific interpretation require review']})
+                             'passage_relevance_score':citation.get('rerank_score'),'status':'candidate','limitations':['Sentence-level extraction; study context and scientific interpretation require review']})
             if len(findings)>=80:break
     if not findings:return []
     try:
@@ -42,8 +42,9 @@ def extract(citations,question):
         scores=DENSE.rerank(question,[f['statement'] for f in findings])
         for finding,score in zip(findings,scores):
             finding['sentence_relevance_score']=float(score)
-            finding['method']='sentence-reranker-v1'
-        findings.sort(key=lambda f:-f['sentence_relevance_score'])
+            finding['selection_score']=float(score) if finding['passage_relevance_score'] is None else .75*float(score)+.25*float(finding['passage_relevance_score'])
+            finding['method']='context-weighted-sentence-reranker-v2'
+        findings.sort(key=lambda f:-f['selection_score'])
     except (ImportError,OSError,ValueError,RuntimeError):
         findings=[f for f in findings if DIRECTION.search(f['statement'])]
     # Keep a small review queue; scores measure relevance, never entailment/truth.

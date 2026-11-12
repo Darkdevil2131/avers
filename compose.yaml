@@ -33,7 +33,7 @@ services:
     ports: ['127.0.0.1:8000:8000']
     depends_on:
       migrate: {condition: service_completed_successfully}
-    networks: [database]
+    networks: [database, ingress]
     read_only: true
     tmpfs: [/tmp]
     security_opt: [no-new-privileges:true]
@@ -55,6 +55,7 @@ services:
 networks:
   database: {internal: true}
   outbound: {}
+  ingress: {}
 volumes:
   postgres-data: {}
   model-data: {}

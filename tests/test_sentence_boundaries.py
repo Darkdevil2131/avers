@@ -30,3 +30,12 @@ def test_candidate_budget_is_global(monkeypatch):
     citations=[{'source_id':str(i),'label':f'S{i}','quote':' '.join(f'Humidity reduced coating stability in experiment {n}.' for n in range(100)),'start_offset':0} for i in range(8)]
     result=extract(citations,'humidity coating')
     assert sizes==[80] and len(result)==3
+
+def test_context_relevance_breaks_sentence_only_tie_without_truth_claim(monkeypatch):
+    monkeypatch.setattr(DENSE,'rerank',lambda q,values:[2.0]*len(values))
+    citations=[{'source_id':'weak','label':'S1','quote':'Humidity reduced coating stability in one experiment.','start_offset':0,'rerank_score':-2.0},
+               {'source_id':'strong','label':'S2','quote':'Humidity reduced coating stability in another experiment.','start_offset':0,'rerank_score':6.0}]
+    findings=extract(citations,'humidity coating')
+    assert findings[0]['source_id']=='strong'
+    assert findings[0]['context_verified'] is False
+    assert findings[0]['status']=='candidate'

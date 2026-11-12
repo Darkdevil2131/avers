@@ -7,9 +7,13 @@ from ares.database import Database
 from ares.retrieval import _hybrid_search,expand_passages
 from ares.agents import extract
 root=Path(os.environ['ARES_PRIOR_EVAL'])
+# Baseline source is a pinned prior repository commit, never downloaded model output.
+import subprocess
+Path('state').mkdir(exist_ok=True)
+Path('state/baseline_agents.py').write_bytes(subprocess.check_output(['git','show','29b2b88fd8b290bd0a09037b993ef5eba3c9ef90:ares/agents.py']))
 spec=importlib.util.spec_from_file_location('ares.baseline_agents','state/baseline_agents.py')
 baseline=importlib.util.module_from_spec(spec);spec.loader.exec_module(baseline)
-prior=json.loads(Path('docs/scifact-independent-check.json').read_text())
+prior=json.loads(Path(os.environ.get('ARES_SELECTION_RESULTS','docs/scifact-independent-check.json')).read_text())
 with tarfile.open(root/'data.tar.gz') as tar:
     claims={c['id']:c for c in (json.loads(l) for l in tar.extractfile('data/claims_dev.jsonl'))}
     corpus={str(c['doc_id']):c for c in (json.loads(l) for l in tar.extractfile('data/corpus.jsonl'))}
@@ -34,9 +38,9 @@ with dbs.connect() as db:
                 assert text[f['start_offset']:f['end_offset']]==f['statement']
             scored[name]={'top1':bool(matches and matches[0]),'correct':sum(matches),'candidates':len(matches)}
         results.append({'claim_id':claim['id'],**scored})
-        print(json.dumps({'done':len(results),'total':30}),flush=True)
-summary={'scope':'Paired development regression on the previously inspected 30-claim sample, not independent acceptance','claims':len(results),'corpus_documents':1000,'pipeline_change':'Bounded sentence expansion with exact offsets; abbreviation-aware splitting; global candidate cap','results':results,'seconds':time.monotonic()-started}
+        print(json.dumps({'done':len(results),'total':len(prior['results'])}),flush=True)
+summary={'scope':'Paired comparison on the selected SciFact development claims; no hidden test or expert validation','claims':len(results),'corpus_documents':1000,'pipeline_change':'Bounded sentence expansion; abbreviation-aware splitting; global cap; 75% sentence and 25% passage relevance ranking','results':results,'seconds':time.monotonic()-started}
 for name in ['before','after']:
     summary[name]={'first_candidate_correct':sum(r[name]['top1'] for r in results),'candidate_precision':sum(r[name]['correct'] for r in results)/sum(r[name]['candidates'] for r in results)}
-Path('docs/sentence-boundary-evaluation.json').write_text(json.dumps(summary,indent=2)+'\n')
+Path(os.environ.get('ARES_COMPARISON_OUTPUT','docs/sentence-boundary-evaluation.json')).write_text(json.dumps(summary,indent=2)+'\n')
 print(json.dumps({k:v for k,v in summary.items() if k!='results'},indent=2))
