@@ -131,8 +131,9 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
         with storage.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             storage.authorize(db, project_id, user, write=True)
-            if getattr(db,'is_postgres',False) and idempotency_key:
-                db.execute("SELECT pg_advisory_xact_lock(hashtext(?))",(project_id+':'+idempotency_key,))
+            if getattr(db,'is_postgres',False):
+                # Serialize admission per project, including requests without keys.
+                db.execute("SELECT pg_advisory_xact_lock(hashtextextended(?,0))",(project_id,))
             existing = db.execute("SELECT run_id FROM run_state WHERE project_id=? AND request_key=?",
                                   (project_id, idempotency_key)).fetchone() if idempotency_key else None
             if existing:
@@ -140,6 +141,9 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                 if old["question"] != body.question or bool(old["external"]) != body.external:
                     raise HTTPException(409, "Idempotency key belongs to another request")
                 return old
+            pending = db.execute("SELECT count(*) FROM run_state WHERE project_id=? AND cancelled=0 AND status IN ('queued','running')", (project_id,)).fetchone()[0]
+            if pending >= 20:
+                raise HTTPException(429, "Project research queue is full (20 active jobs); wait for completion or cancel a job", headers={"Retry-After": "10"})
             db.execute("INSERT INTO runs VALUES(?,?,?,?)", (identifier, project_id, body.question, now()))
             db.execute("INSERT INTO run_state(run_id,status,external,request_key,project_id) VALUES(?,?,?,?,?)",
                        (identifier, "queued", int(body.external), idempotency_key, project_id))

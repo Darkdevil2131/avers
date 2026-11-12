@@ -55,3 +55,8 @@ def test_database_rls_and_research_end_to_end():
     with ThreadPoolExecutor(max_workers=8) as pool:
         rows=list(pool.map(unscoped_read,users))
     for user,ids in zip(users,rows):assert ids==({s['id']} if user=='alice' else {secret})
+
+def test_postgres_concurrent_queue_admission():
+    from test_worker_resilience import check_queue_admission
+    from ares.api import create_app
+    check_queue_admission(create_app(os.environ['ARES_TEST_POSTGRES'],{'queue':'q'*40},auto_process=False))

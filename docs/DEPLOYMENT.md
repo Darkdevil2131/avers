@@ -39,3 +39,9 @@ For PostgreSQL, use pg_dump and restore into a separate database with psql -v ON
 No permanent no-charge host is connected. No trial, billing change, or paid deployment has been authorized or executed.
 
 The API uses an ingress network in addition to the private database network so the localhost-only published port is reachable. This permits API egress; it is not an egress firewall. PostgreSQL remains unpublished on the internal network. A public host still needs an HTTPS proxy and operational controls.
+
+## Queue admission and worker failure isolation
+
+A project can have at most 20 uncancelled queued/running jobs. New submissions above that limit return HTTP 429 with Retry-After: 10. Existing matching idempotency keys still return the existing run at capacity; cancellation or completion releases a slot. Admission is serialized per project using a PostgreSQL transaction advisory lock, or SQLite's write transaction, so simultaneous requests cannot overfill the limit. This is a per-project bound, not a global resource quota or an inference-capacity guarantee.
+
+A job failure remains visible as failed, but the worker loop continues to other jobs. Repeated iteration errors use exponential backoff from one to 30 seconds; logs record exception types without source text or connection URLs. SIGTERM/SIGINT request shutdown between jobs and interrupt idle/backoff waits. An in-flight operation may still need its existing deadline or lease recovery after a forced stop. API and worker containers have a bounded on-failure restart policy (five attempts). There is no paid service or additional provisioning involved.
