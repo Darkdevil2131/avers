@@ -1,0 +1,34 @@
+{
+  "passed": true,
+  "pmcid": "PMC4383902",
+  "provider": "ncbi_bioc_fulltext",
+  "license": "CC BY (NCBI BioC license metadata)",
+  "original_sha256": "5b2291b3a5a1361584008795affd61b0e07e40c919d3b6d49782415d990a3379",
+  "characters": 20367,
+  "citation_count": 8,
+  "finding_count": 3,
+  "retrieval": {
+    "reviewed_feedback_used": 0,
+    "reranked": true,
+    "mode": "hybrid",
+    "dense_available": true,
+    "model": "sentence-transformers/all-MiniLM-L6-v2",
+    "model_sha256": "09697d311c5b7cc77ee81000158c5d2f41739328b5b0e12e43ab558130a70301",
+    "indexed_passages": 23,
+    "fusion": "RRF k=60",
+    "similarity_is_truth_probability": false,
+    "passage_boundaries": "bounded-sentence-expansion-v1"
+  },
+  "reasoner": {
+    "status": "unavailable",
+    "reason": "No local reasoning model configured"
+  },
+  "seconds_after_collection": 4.1391145789999655,
+  "scope": "Real licensed full text ingested via HTTP; separate worker; prepared local dense/reranking models; persisted exact citations",
+  "limits": [
+    "SQLite in hosted test workspace, not public deployment",
+    "Question uses article title; no answer correctness metric",
+    "Generative reasoner deliberately disabled and disclosed",
+    "No production SLA or permanent hosting established"
+  ]
+}

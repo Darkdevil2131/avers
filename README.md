@@ -67,3 +67,7 @@ PostgreSQL now enforces project isolation using row-level security and separate 
 SciFact development evaluation covers 27 claims over 1,000 documents: retrieval recall@8 was 100%, first-candidate rationale agreement 66.7%, and candidate rationale precision 33.3%. This restricted development result is not proof of scientific reliability. A rerun on 30 distinct development claims achieved hybrid recall@8 of 96.7% and first-candidate rationale agreement of 63.3%; its results are now saved. Public deployment and expert scientific validation remain incomplete.
 
 A real 30-user HTTP workload passes against SQLite and PostgreSQL. See [measured load results and limits](docs/LOAD_VALIDATION.md). These checks cover private reads and idempotent queue submissions, not sustained model inference or a deployed service.
+
+## Evidence and workflow update
+
+Sentence boundaries and passage context now inform evidence selection. Paired first-choice matches improved from 19/30 to 20/30 on the development sample and 8/24 to 10/24 on distinct claims; overall candidate precision regressed on the latter. A live full-text HTTP/worker/model-RAG workflow passed exact citation checks. See [measured improvements and limitations](docs/IMPROVEMENTS_2026_11_12.md). This is not scientific production approval or permanent hosting.

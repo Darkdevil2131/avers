@@ -133,7 +133,7 @@ jobs:
         run: |
           docker compose restart api worker
           python - <<'PYTHON'
-          import json,os,time,urllib.request,urllib.error
+          import json,os,time,urllib.request,urllib.error,http.client
           state=json.load(open('/tmp/ares-compose-check.json'))
           url='http://127.0.0.1:8000/projects/'+state['project']+'/runs/'+state['run']+'/report'
           for _ in range(60):
@@ -143,7 +143,7 @@ jobs:
                   assert report['citations'] and report['assessment']=='inconclusive'
                   print('Persisted cited report survives service restart')
                   break
-              except (urllib.error.URLError,TimeoutError):time.sleep(1)
+              except (OSError,http.client.HTTPException):time.sleep(1)
           else:raise RuntimeError('Report unavailable after restart')
           PYTHON
       - name: Show service logs on failure

@@ -1,5 +1,5 @@
 """Verify a running disposable Compose stack over HTTP, including real worker completion."""
-import hashlib,json,os,time,urllib.request,urllib.error
+import hashlib,json,os,time,urllib.request,urllib.error,http.client
 TOKEN=json.loads(os.environ['ARES_CREDENTIALS'])['fixture']
 BASE='http://127.0.0.1:8000'
 def request(path,data=None,token=TOKEN):
@@ -10,7 +10,7 @@ last_error=None
 while time.monotonic()<deadline:
     try:
         if request('/health')['status']=='ok':break
-    except (urllib.error.URLError,TimeoutError) as exc:
+    except (OSError,http.client.HTTPException) as exc:
         last_error=type(exc).__name__;time.sleep(1)
 else:raise RuntimeError('Compose API did not become ready: '+str(last_error))
 project=request('/projects',{'name':'Compose end-to-end fixture'})['id']

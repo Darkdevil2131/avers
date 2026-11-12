@@ -29,3 +29,7 @@ Reproduce after explicit model preparation:
 ```bash
 ARES_EVAL_SEED=20261112 ARES_EVAL_EXCLUDE=docs/scifact-evaluation.json ARES_EVAL_OUTPUT=docs/scifact-independent-check.json PYTHONPATH=. python scripts/evaluate_scifact.py
 ```
+
+## Subsequent extraction revision
+
+See IMPROVEMENTS_2026_11_12.md for paired before/after results and retained failures. First-candidate matches rose modestly, but overall candidate precision fell on the new 24-claim sample. Earlier measurements above describe the earlier pipeline and remain preserved. The system still lacks validated scientific judgments.
