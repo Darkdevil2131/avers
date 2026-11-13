@@ -84,13 +84,31 @@ def proposal_critic(proposal):
     mechanism=proposal.get('mechanism','').lower()
     reasons=[]
     def direction(value):
-        up=bool(re.search(r'\b(increas\w*|higher|improv\w*)\b',value))
-        down=bool(re.search(r'\b(decreas\w*|reduc\w*|lower)\b',value))
-        return 1 if up and not down else -1 if down and not up else 0
-    a,b=direction(hypothesis),direction(quote)
+        # "Did not increase" may mean stable or decreased. Never invert it into
+        # a positive/negative effect, or interpret absence of significance as one.
+        if re.search(r"\b(not|no|never|without|neither|failed to)\b|n['’]t\b",value):
+            return 0, 'negation_requires_context_review'
+        # Comparative adjectives can describe exposure/dose, not the outcome:
+        # "adhesion increased at lower humidity" is not mixed direction.
+        up=bool(re.search(r'\b(increase[sd]?|increasing|improve[sd]?|improving)\b',value))
+        down=bool(re.search(r'\b(decrease[sd]?|decreasing|reduce[sd]?|reducing)\b',value))
+        if up and down:return 0, 'mixed_directions_require_context_review'
+        if up or down:return (1 if up else -1), 'explicit_direction_word'
+        # Bare "higher/lower" remains ambiguous; require a predicative phrase.
+        up=bool(re.search(r'\b(?:is|are|was|were|became|becomes)\s+higher\b',value))
+        down=bool(re.search(r'\b(?:is|are|was|were|became|becomes)\s+lower\b',value))
+        if up != down:return (1 if up else -1), 'predicative_comparison'
+        return 0, 'direction_not_established'
+    (a,a_reason),(b,b_reason)=direction(hypothesis),direction(quote)
     shared=len(terms(hypothesis)&terms(quote))/max(1,len(terms(hypothesis)))
-    if a*b==-1 and shared>=.3:
+    opposition=a*b==-1 and shared>=.3
+    if opposition:
         reasons.append('Proposed direction opposes its cited observation without a validated reconciliation')
     if any(x in mechanism for x in ('not supported by the evidence','contradicts the evidence')):
         reasons.append('The generated mechanism explicitly disclaims its own evidential support')
-    return {'accepted_as_candidate':not reasons,'reasons':reasons,'scientific_validation':False}
+    return {'accepted_as_candidate':not reasons,'reasons':reasons,'scientific_validation':False,
+            'direction_check':{'status':'potential_opposition' if opposition else 'requires_review' if not a or not b else 'no_opposition_detected',
+                               'hypothesis_basis':a_reason,'evidence_basis':b_reason,
+                               'context_verified':False},
+            'limitations':['Direction words do not verify matching outcomes, populations, exposures or causal support.',
+                           'A proposal not rejected by these rules still requires scientific review.']}
