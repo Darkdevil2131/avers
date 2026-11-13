@@ -33,6 +33,10 @@ class ResearchEngine:
                                          "mode": "deterministic", "max_sources": 10})
         try:
             deadline=time.monotonic()+180
+            collection = {'requested': bool(claimed['external']), 'status': 'not_requested',
+                          'queries': [], 'metadata_records': 0, 'fulltext_attempted': 0,
+                          'fulltext_stored': 0, 'errors': [], 'bounded': False,
+                          'scope': 'Bounded literature collection; absence of results is not evidence against a hypothesis.'}
             def stopped():
                 with dbs.connect() as check:
                     current=check.execute("SELECT * FROM run_state WHERE run_id=?",(run_id,)).fetchone()
@@ -40,6 +44,7 @@ class ResearchEngine:
                         or current['attempts'] != claimed['attempts']
                         or current['lease_until'] <= time.time() or time.monotonic()>deadline)
             if claimed["external"]:
+                collection['status'] = 'collecting'
                 with dbs.connect() as db:
                     dbs.event(db, run_id, "external_search_started", {"provider": "Europe PMC"})
                 try:
@@ -53,24 +58,37 @@ class ResearchEngine:
                         strategy="counterevidence"
                     with dbs.connect() as db:
                         dbs.event(db,run_id,"planner_decision",{"strategy":strategy,"query":query,"reason":"Project already contains matching passages; search for counterevidence" if local else "No matching project passages; collect primary evidence"})
-                    records = self.provider.search(query)
+                    collection['queries'].append({'query': query, 'strategy': strategy})
+                    records = list(self.provider.search(query))
                     if len(records)<2 and hasattr(self.provider,'fulltext') and not stopped():
                         broadened=" OR ".join(objective["search_terms"][:4])
                         with dbs.connect() as db:
                             dbs.event(db,run_id,"planner_decision",{"strategy":"broaden_search","query":broadened,"reason":"First search returned fewer than two records"})
-                        records+=self.provider.search(broadened)
+                        collection['queries'].append({'query': broadened, 'strategy': 'broaden_search'})
+                        try:
+                            records.extend(self.provider.search(broadened))
+                        except ProviderError as exc:
+                            # Preserve useful first-search results if the broader request fails.
+                            collection['errors'].append({'stage':'broaden_search','message':str(exc)[:300]})
+                    records = list({record['url']: record for record in records}.values())
+                    collection['metadata_records'] = len(records)
                     with dbs.connect() as db:
                         for record in records:
                             dbs.add_source(db, run["project_id"], record, "research_worker")
                         dbs.event(db, run_id, "external_search_completed",
                                   {"provider": "Europe PMC", "count": len(records), "content": "metadata"})
-                    frontier=[(p,0) for p in list(dict.fromkeys(r.get("pmcid") for r in records if r.get("is_open_access") and r.get("pmcid")))[:2]]
+                    eligible=list(dict.fromkeys(r.get("pmcid") for r in records if r.get("is_open_access") and r.get("pmcid")))
+                    collection['bounded'] = len(eligible) > 2
+                    frontier=[(p,0) for p in eligible[:2]]
                     seen=set()
                     while frontier and len(seen)<4:
-                        if stopped():break
+                        if stopped():
+                            collection['bounded'] = True
+                            break
                         pmcid,depth=frontier.pop(0)
                         if pmcid in seen:continue
                         seen.add(pmcid)
+                        collection['fulltext_attempted'] += 1
                         with dbs.connect() as db:
                             dbs.event(db,run_id,"spider_fetch",{"pmcid":pmcid,"depth":depth,"source":"Europe PMC open-access API"})
                         try:
@@ -79,12 +97,24 @@ class ResearchEngine:
                                 frontier.extend((ref,depth+1) for ref in document["document"]["references"][:2] if ref not in seen)
                             with dbs.connect() as db:
                                 source=dbs.add_source(db,run["project_id"],document,"research_worker")
+                                collection['fulltext_stored'] += 1
                                 dbs.event(db,run_id,"document_ingested",{"source_id":source["id"],"pmcid":pmcid,"characters":len(document["text"]),"license":document["license_status"]})
                         except ProviderError as exc:
+                            collection['errors'].append({'stage':'fulltext','pmcid':pmcid,'message':str(exc)[:300]})
                             with dbs.connect() as db:dbs.event(db,run_id,"document_rejected",{"pmcid":pmcid,"message":str(exc)})
+                    collection['bounded'] |= any(p not in seen for p, _ in frontier)
                 except ProviderError as exc:
+                    collection['errors'].append({'stage':'search','message':str(exc)[:300]})
                     with dbs.connect() as db:
                         dbs.event(db, run_id, "external_search_failed", {"message": str(exc)})
+                if collection['errors'] or collection['bounded']:
+                    collection['status'] = 'partial' if collection['metadata_records'] else 'unavailable'
+                elif collection['fulltext_stored']:
+                    collection['status'] = 'collected'
+                else:
+                    collection['status'] = 'metadata_only' if collection['metadata_records'] else 'no_results'
+                with dbs.connect() as db:
+                    dbs.event(db, run_id, 'collection_summary', collection)
             with dbs.connect() as db:
                 db.execute("BEGIN IMMEDIATE")
                 state = db.execute("SELECT * FROM run_state WHERE run_id=?", (run_id,)).fetchone()
@@ -138,7 +168,7 @@ class ResearchEngine:
                 dbs.event(db,run_id,"critic",criticism)
                 dbs.event(db,run_id,"hypothesize",{"proposals":len(proposals),"type":"model candidates" if inference["status"]=="completed" else "replication candidates"})
                 report = {
-                    "run_id": run_id, "question": run["question"], "retrieval":retrieval,
+                    "run_id": run_id, "question": run["question"], "retrieval":retrieval, "collection": collection,
                     "reasoner":{k:v for k,v in inference.items() if k!="proposals"},"findings":findings,"critique":criticism,"hypotheses":proposals,"plan":plan(run["question"]),
                     "assessment": "inconclusive", "calibrated": False,
                     "summary": inference.get("answer") or ("Extracted observations: " + " ".join(f["statement"] for f in findings[:3]) if findings else "Relevant passages were retrieved for review." if citations else "The available project sources contain no matching passages."),
@@ -158,6 +188,14 @@ class ResearchEngine:
                 }
                 lines = ["# Research evidence report", "", run["question"], "",
                          "Assessment — inconclusive", "", report["summary"], ""]
+                lines += ['## Source collection', '',
+                          'Status: ' + collection['status'],
+                          f"Metadata records: {collection['metadata_records']}; full texts stored: {collection['fulltext_stored']}; full texts attempted: {collection['fulltext_attempted']}",
+                          collection['scope'], '']
+                lines += [f"- {error['stage']}: {error['message']}" for error in collection['errors']]
+                lines += [f"- Search ({entry['strategy']}): {entry['query']}" for entry in collection['queries']]
+                if collection['bounded']:
+                    lines += ['Collection budget reached; the search is incomplete.']
                 for citation in citations:
                     lines += [f"## [{citation['label']}] {citation['title']}", "",
                               citation["quote"], "", citation["url"],
