@@ -3,8 +3,10 @@ import { createRoot } from 'react-dom/client';
 import Scene from './Scene';
 import Evidence from './Evidence';
 import Memory from './Memory';
+import ProposalReview from './ProposalReview';
 import './style.css';
 const STAGES = {
+  collection_summary: 'Source collection recorded',
   reasoner_started: 'Preparing local reasoning', reasoner_completed: 'Local reasoning finished', planner_decision: 'Research strategy adjusted', queued: 'Research queued', plan: 'Research plan created',
   external_search_started: 'Searching Europe PMC',
   spider_fetch: 'Fetching open-access document', document_ingested: 'Full text stored', document_rejected: 'Document unavailable or license rejected', memory_retrieval: 'Retrieving project evidence', extract: 'Extracting candidate findings', critic: 'Checking evidence limits', hypothesize: 'Proposing follow-up tests', external_search_completed: 'Metadata received', external_search_failed: 'Source unavailable',
@@ -19,6 +21,7 @@ export function App() {
   const [projects, setProjects] = useState([]), [project, setProject] = useState(null);
   const [sources, setSources] = useState([]), [runs, setRuns] = useState([]);
   const [run, setRun] = useState(null), [events, setEvents] = useState([]), [report, setReport] = useState(null);
+  const [streamError, setStreamError] = useState(false), [streamAttempt, setStreamAttempt] = useState(0);
   const [question, setQuestion] = useState(''), [external, setExternal] = useState(false);
   const [tab, setTab] = useState('research'), [modal, setModal] = useState(null), [busy, setBusy] = useState(false);
   const [reduced, setReduced] = useState(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -52,6 +55,7 @@ export function App() {
   useEffect(() => {
     if (!run || !project) return;
     const controller = new AbortController();
+    setStreamError(false);
     const projectId = project.id, runId = run.id;
     let latest = 0;
     async function load() {
@@ -78,14 +82,23 @@ export function App() {
       }
       if (controller.signal.aborted || activeProject.current !== projectId) return;
       const status = await api(prefix);
+      if (controller.signal.aborted || activeProject.current !== projectId) return;
       setRun(status);
-      if (status.status === 'completed') setReport(await api(prefix + '/report'));
+      if (status.status === 'completed') {
+        const savedReport = await api(prefix + '/report');
+        if (controller.signal.aborted || activeProject.current !== projectId) return;
+        setReport(savedReport);
+      }
       await refresh(projectId);
-      if (!TERMINAL.has(status.status)) throw new Error('Event connection ended. Reopen this run to reconnect.');
+      if (!TERMINAL.has(status.status)) throw new Error('Event connection ended. Reconnect to follow this run.');
     }
-    load().catch(exc => { if (exc.name !== 'AbortError') setError(exc.message); });
+    load().catch(exc => {
+      if (!controller.signal.aborted && exc.name !== 'AbortError') {
+        setError(exc.message); setStreamError(true);
+      }
+    });
     return () => controller.abort();
-  }, [run?.id, project?.id]);
+  }, [run?.id, project?.id, streamAttempt]);
   async function submit(event) {
     event.preventDefault(); if (!project) return;
     setBusy(true); setError('');
@@ -173,11 +186,14 @@ export function App() {
       <div className="history">{runs.length ? runs.map(item => <button key={item.id} className={run?.id === item.id ? 'selected' : ''} onClick={() => { if (run?.id !== item.id) { setEvents([]); setReport(null); setRun(item); } setTab('research'); }}>
         <i className={'dot ' + item.status}/><span>{item.question}</span>
       </button>) : <p>Saved research will appear here.</p>}</div>
-      <div className="sidebar-bottom"><span className="avatar">{user?.username.slice(0, 1).toUpperCase() || 'A'}</span><div>{user?.username || 'Private workspace'}<small>₹0 external service spend</small></div>{user && <button aria-label="Sign out" onClick={() => location.reload()}>↪</button>}</div>
+      <div className="sidebar-bottom"><span className="avatar">{user?.username.slice(0, 1).toUpperCase() || 'A'}</span><div>{user?.username || 'Private workspace'}<small>Evidence stays reviewable</small></div>{user && <button aria-label="Sign out" onClick={() => location.reload()}>↪</button>}</div>
     </aside>
     <main inert={!user || !!modal}>
       <header><span>Workspace <span className="slash">/</span> {project?.name || 'Research'}</span><div className="header-right"><span className="status-light"/> {user?.mode || 'Research workspace'} <button className="quiet" onClick={() => setReduced(!reduced)} aria-pressed={reduced}>2D view</button></div></header>
       {error && <div className="error" role="alert">{error}<button onClick={() => setError('')} aria-label="Dismiss error">×</button></div>}
+      {streamError && run && <button className="secondary" onClick={() => {
+        setError(''); setStreamError(false); setEvents([]); setStreamAttempt(value => value + 1);
+      }}>Reconnect to run</button>}
       <div className="main-content">
         <div className="page-title"><div><p className="eyebrow">EVIDENCE FIRST</p><h1>{tab === 'research' ? 'Follow the evidence.' : tab === 'memory' ? 'Keep research reviewable.' : tab === 'evidence' ? 'Review the scientific context.' : 'Your research sources.'}</h1><p>{tab === 'research' ? 'Ask a question. Inspect the sources. Keep the evidence traceable.' : 'Versioned source text, provenance, and review status in one place.'}</p></div><button className="secondary" disabled={!project || project.role === 'viewer'} onClick={() => setModal({ type: 'source' })}>＋ Add source</button></div>
 
@@ -200,9 +216,16 @@ export function App() {
                 {report.outdated_sources.length > 0 && <p className="warning">Source reviews have changed since this report was saved. Start a new run to refresh the evidence.</p>}
                 <h3>{report.question}</h3>{report.summary_status && <small>{report.summary_status}</small>}<p>{report.summary}</p>{report.reasoner && <p>Local reasoning: {report.reasoner.status}{report.reasoner.reason ? ' — ' + report.reasoner.reason : ''}</p>}
                 {report.retrieval && <p className="warning">Retrieval: {report.retrieval.mode} · {report.retrieval.dense_available ? 'Dense embeddings + keyword search' : report.retrieval.reason || 'No indexed passages'}</p>}
+                {report.collection && <section aria-label="Source collection"><h3>Source collection</h3>
+                  <p>Status: {report.collection.status.replaceAll('_', ' ')} · {report.collection.metadata_records} metadata records · {report.collection.fulltext_stored} full texts stored</p>
+                  <p>{report.collection.scope}</p>
+                  {report.collection.bounded && <p className="warning">The collection limit was reached. This search is incomplete.</p>}
+                  {report.collection.errors.map((item,i)=><p className="warning" key={i}>{item.stage}: {item.message}</p>)}
+                  <details><summary>Search strategy and queries</summary>{report.collection.queries.map((item,i)=><p key={i}>{item.strategy}: {item.query}</p>)}</details>
+                </section>}
                 {report.findings?.length > 0 && <section><h3>Extracted candidate findings</h3><p>Exact source statements. Scientific meaning and study context still require review.</p>{report.findings.map((f,i)=><article className="citation" key={i}><span>{f.citation} · {f.method}</span><blockquote>{f.statement}</blockquote><p>Measurements found: {f.measurements.join(', ')||'none'}</p></article>)}</section>}
                 {report.critique && <details><summary>Evidence critic decision</summary><p>{report.critique.reason}</p>{report.critique.missing_checks.map(x=><p key={x}>{x}</p>)}{report.critique.potential_disagreements.map((x,i)=><p key={i}>{x.left} / {x.right}: {x.reason}</p>)}{report.critique.rejected_proposals?.map((r,i)=><p key={'rejected'+i}>Rejected model proposal: {r.check.reasons.join('; ')}</p>)}</details>}
-                {report.hypotheses?.map((h,i)=><article className="citation" key={'h'+i}><h3>Follow-up proposal · requires review</h3><p>{h.statement}</p><blockquote>{h.basis_quote}</blockquote><p>{h.mechanism}</p><p>Falsification: {h.falsification}</p><p>No experiment has been executed. Novelty has not been established.</p></article>)}
+                {report.hypotheses?.map((h,i)=><article className="citation" key={'h'+i}><h3>Follow-up proposal · requires review</h3><p>{h.statement}</p><blockquote>{h.basis_quote}</blockquote><p>{h.mechanism}</p><p>Falsification: {h.falsification}</p><ProposalReview check={h.consistency_check}/><p>No experiment has been executed. Novelty has not been established.</p></article>)}
                 {report.citations.map(citation => <article className="citation" key={citation.label}>
                   <div className="citation-heading"><span className="citation-label">{citation.label}</span><span>{citation.origin.endsWith('_metadata') ? 'Bibliographic metadata' : citation.origin.endsWith('_fulltext') ? 'Licensed full-text passage' : 'Source passage'}</span></div>
                   <h4>{citation.title}</h4><blockquote>{citation.quote}</blockquote>

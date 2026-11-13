@@ -1,0 +1,41 @@
+{
+  "passed": false,
+  "scenario": "Three concurrent submissions; one real-model worker",
+  "runs": [
+    {
+      "user_index": 0,
+      "status": "completed",
+      "queue_to_report_seconds": 23.615749273000006,
+      "submission_ms": 15.21360500009905,
+      "citations": 1,
+      "reasoner": {
+        "status": "completed",
+        "model_sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+        "model": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+        "paid_api_calls": 0,
+        "answer": "Synthetic fixture owned by qa0. Coating adhesion decreased after exposure to high humidity. Water uptake was measured before the adhesion test.",
+        "answer_status": "exact source extract",
+        "critic_warnings": [
+          "Model mechanisms and falsification logic have not been scientifically validated; proposals require expert review"
+        ],
+        "scientific_validity": "unvalidated"
+      },
+      "rejected_candidates": []
+    }
+  ],
+  "errors": [
+    {
+      "type": "AssertionError",
+      "message": "{'status': 'rejected', 'reason': 'Local inference process failed'}"
+    }
+  ],
+  "health_checks": 159,
+  "health_max_ms": 24.36209699999381,
+  "limits": [
+    "Synthetic fixtures, not scientific validation",
+    "Three jobs only; not sustained inference or a production SLA",
+    "Disposable SQLite on hosted workspace, not Railway or PostgreSQL inference load",
+    "No browser/WebGL or permanent zero-cost hosting verification"
+  ],
+  "elapsed_seconds": 84.82156528199994
+}

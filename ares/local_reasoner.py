@@ -5,8 +5,8 @@ from pathlib import Path
 import subprocess
 import sys
 SCHEMA={"type":"object","properties":{
- "answer":{"type":"string"},"hypothesis":{"type":"string"},"mechanism":{"type":"string"},"falsification":{"type":"string"},
- "citation":{"type":"string"},"quote":{"type":"string"},"limitations":{"type":"array","items":{"type":"string"}},
+ "answer":{"type":"string","maxLength":320},"hypothesis":{"type":"string","maxLength":240},"mechanism":{"type":"string","maxLength":240},"falsification":{"type":"string","maxLength":240},
+ "citation":{"type":"string","maxLength":16},"quote":{"type":"string","maxLength":320},"limitations":{"type":"array","maxItems":2,"items":{"type":"string","maxLength":120}},
  },"required":["answer","hypothesis","mechanism","falsification","citation","quote","limitations"],"additionalProperties":False}
 def suggest(question,citations):
     path=os.environ.get('ARES_REASONER_MODEL')
@@ -20,10 +20,14 @@ def suggest(question,citations):
           input=json.dumps({'question':question[:1500],'evidence':evidence}),capture_output=True,text=True,timeout=90,env=environment)
         if output.returncode:raise ValueError('Local inference process failed')
         result=json.loads(output.stdout)
+        if result.get('error'):
+            message={'output_budget_exhausted':'Local model reached its output budget; incomplete proposal rejected',
+                     'invalid_json':'Local model produced invalid JSON; proposal rejected'}.get(result['error'],'Local model output rejected')
+            raise ValueError(message)
         data=result['proposal']
         if set(data)!=set(SCHEMA['required']):raise ValueError('Invalid schema')
-        if any(not isinstance(data[k],str) or len(data[k])>3000 for k in ('answer','hypothesis','mechanism','falsification','citation','quote')):raise ValueError('Invalid field')
-        if not isinstance(data['limitations'],list) or not all(isinstance(x,str) and len(x)<=2000 for x in data['limitations']):raise ValueError('Invalid limitations')
+        if any(not isinstance(data[k],str) or len(data[k])>SCHEMA['properties'][k]['maxLength'] for k in ('answer','hypothesis','mechanism','falsification','citation','quote')):raise ValueError('Invalid field')
+        if not isinstance(data['limitations'],list) or len(data['limitations'])>2 or not all(isinstance(x,str) and len(x)<=120 for x in data['limitations']):raise ValueError('Invalid limitations')
         source=next((c for c in citations if c['label']==data['citation']),None)
         if source is None or len(data['quote'].strip())<20 or data['quote'] not in source['quote']:
             raise ValueError('Generated evidence quote did not match a source')
@@ -34,12 +38,21 @@ def suggest(question,citations):
                   'status':'proposal_needs_review','novelty':'not assessed','experiment_executed':False,
                   'grounding':'quotation integrity checked; interpretation and mechanism unverified'}
         return {'status':'completed','model_sha256':result['model_sha256'],'model':Path(path).name,
-                'paid_api_calls':0,'answer':data['answer'] if data['answer'] in source['quote'] else None,
-                'answer_status':'exact source extract' if data['answer'] in source['quote'] else 'generated narrative rejected: not an exact source extract',
+                'paid_api_calls':0,'answer':data['answer'] if data['answer'].strip() and data['answer'] in source['quote'] else None,
+                'answer_status':'exact source extract' if data['answer'].strip() and data['answer'] in source['quote'] else 'generated narrative rejected: not a nonempty exact source extract',
                 'critic_warnings':['Model mechanisms and falsification logic have not been scientifically validated; proposals require expert review'],
                 'proposals':[proposal],'scientific_validity':'unvalidated'}
     except (subprocess.TimeoutExpired,ValueError,KeyError,TypeError) as exc:
         return {'status':'rejected','reason':str(exc)[:300],'proposals':[]}
+def completion_payload(result):
+    """Never parse or repair a truncated proposal into something that looks valid."""
+    choice=result['choices'][0]
+    if choice.get('finish_reason')=='length':return {'error':'output_budget_exhausted'}
+    try:
+        return {'proposal':json.loads(choice['message']['content'])}
+    except (json.JSONDecodeError,TypeError):
+        return {'error':'invalid_json'}
+
 def main():
     from llama_cpp import Llama
     path=Path(sys.argv[1]);payload=json.load(sys.stdin)
@@ -50,5 +63,5 @@ def main():
     sha=hashlib.sha256()
     with path.open('rb') as f:
         for block in iter(lambda:f.read(1024*1024),b''):sha.update(block)
-    print(json.dumps({'proposal':json.loads(result['choices'][0]['message']['content']),'model_sha256':sha.hexdigest()}))
+    print(json.dumps({**completion_payload(result),'model_sha256':sha.hexdigest()}))
 if __name__=='__main__':main()

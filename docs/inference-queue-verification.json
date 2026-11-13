@@ -1,0 +1,133 @@
+{
+  "passed": true,
+  "scenario": "Three concurrent submissions; one real-model worker",
+  "runs": [
+    {
+      "user_index": 0,
+      "status": "completed",
+      "queue_to_report_seconds": 22.485450635999996,
+      "submission_ms": 9.816912000019329,
+      "citations": 1,
+      "reasoner": {
+        "status": "completed",
+        "model_sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+        "model": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+        "paid_api_calls": 0,
+        "answer": "Synthetic fixture owned by qa0. Coating adhesion decreased after exposure to high humidity. Water uptake was measured before the adhesion test.",
+        "answer_status": "exact source extract",
+        "critic_warnings": [
+          "Model mechanisms and falsification logic have not been scientifically validated; proposals require expert review"
+        ],
+        "scientific_validity": "unvalidated"
+      },
+      "rejected_candidates": []
+    },
+    {
+      "user_index": 1,
+      "status": "completed",
+      "queue_to_report_seconds": 41.92011996999997,
+      "submission_ms": 12.254033000090203,
+      "citations": 1,
+      "reasoner": {
+        "status": "completed",
+        "model_sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+        "model": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+        "paid_api_calls": 0,
+        "answer": "Coating adhesion decreased after exposure to high humidity.",
+        "answer_status": "exact source extract",
+        "critic_warnings": [
+          "Model mechanisms and falsification logic have not been scientifically validated; proposals require expert review"
+        ],
+        "scientific_validity": "unvalidated"
+      },
+      "rejected_candidates": [
+        {
+          "candidate": {
+            "kind": "model_generated_candidate",
+            "statement": "Coating adhesion increases with higher humidity.",
+            "mechanism": "The hypothesis suggests a direct relationship between humidity and adhesion, which may not be accurate.",
+            "falsification": "If the coating adhesion increases with higher humidity, it would contradict the observed decrease.",
+            "citation": "S1",
+            "basis_quote": "Synthetic fixture owned by qa1. Coating adhesion decreased after exposure to high humidity. Water uptake was measured before the adhesion test.",
+            "source_id": "c721e24c-0b80-4111-a272-c3131656481a",
+            "limitations": [
+              "The evidence is observational and does not provide a causal mechanism."
+            ],
+            "status": "proposal_needs_review",
+            "novelty": "not assessed",
+            "experiment_executed": false,
+            "grounding": "quotation integrity checked; interpretation and mechanism unverified"
+          },
+          "check": {
+            "accepted_as_candidate": false,
+            "reasons": [
+              "Proposed direction opposes its cited observation without a validated reconciliation"
+            ],
+            "scientific_validation": false
+          }
+        }
+      ]
+    },
+    {
+      "user_index": 2,
+      "status": "completed",
+      "queue_to_report_seconds": 62.08149113199988,
+      "submission_ms": 14.994991999969898,
+      "citations": 1,
+      "reasoner": {
+        "status": "completed",
+        "model_sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+        "model": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+        "paid_api_calls": 0,
+        "answer": "Coating adhesion decreased after exposure to high humidity.",
+        "answer_status": "exact source extract",
+        "critic_warnings": [
+          "Model mechanisms and falsification logic have not been scientifically validated; proposals require expert review"
+        ],
+        "scientific_validity": "unvalidated"
+      },
+      "rejected_candidates": [
+        {
+          "candidate": {
+            "kind": "model_generated_candidate",
+            "statement": "Coating adhesion increases with higher humidity.",
+            "mechanism": "The hypothesis suggests a direct relationship between humidity and adhesion, which is not supported by the evidence.",
+            "falsification": "If the coating adhesion increases with higher humidity, then the water uptake measured before the adhesion test would be higher.",
+            "citation": "S1",
+            "basis_quote": "Synthetic fixture owned by qa2. Coating adhesion decreased after exposure to high humidity. Water uptake was measured before the adhesion test.",
+            "source_id": "b60429f4-648b-40cb-958b-b9159a2a56f5",
+            "limitations": [
+              "The evidence does not provide a direct mechanism linking humidity to adhesion.",
+              "The hypothesis is speculative and not supported by the evidence."
+            ],
+            "status": "proposal_needs_review",
+            "novelty": "not assessed",
+            "experiment_executed": false,
+            "grounding": "quotation integrity checked; interpretation and mechanism unverified"
+          },
+          "check": {
+            "accepted_as_candidate": false,
+            "reasons": [
+              "Proposed direction opposes its cited observation without a validated reconciliation",
+              "The generated mechanism explicitly disclaims its own evidential support"
+            ],
+            "scientific_validation": false
+          }
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "health_checks": 119,
+  "health_max_ms": 74.40528099994026,
+  "limits": [
+    "Synthetic fixtures, not scientific validation",
+    "Three jobs only; not sustained inference or a production SLA",
+    "Disposable SQLite on hosted workspace, not Railway or PostgreSQL inference load",
+    "No browser/WebGL or permanent zero-cost hosting verification"
+  ],
+  "elapsed_seconds": 64.20841027100005,
+  "cancelled_job_stayed_cancelled": true,
+  "reports_survived_api_restart": true,
+  "cross_user_reports_denied": 3
+}
