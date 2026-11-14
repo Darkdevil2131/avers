@@ -5,6 +5,7 @@ import Evidence from './Evidence';
 import Memory from './Memory';
 import ProposalReview from './ProposalReview';
 import Workflow from './Workflow';
+import BuildInfo from './BuildInfo';
 import './style.css';
 const STAGES = {
   collection_summary: 'Source collection recorded',
@@ -247,6 +248,7 @@ export function App() {
           {sources.map(source => <article key={source.id}><div><span className="source-icon">▤</span></div><div className="source-content"><h3>{source.title}</h3><a href={safeLink(source.url)} target="_blank" rel="noreferrer">{source.url}</a><p>{source.text.slice(0, 220)}{source.text.length > 220 ? '…' : ''}</p><span className={'source-status ' + source.status}>{source.status}</span><span className="source-kind">{source.origin.replaceAll('_', ' ')}</span></div><button className="quiet" disabled={project?.role === 'viewer'} onClick={() => setModal({ type: 'review', source })}>Review</button></article>)}
         </section>}
         <footer>ARES <span>Evidence stays traceable. Conclusions stay open to review.</span></footer>
+        <BuildInfo backend={user?.build_revision}/>
       </div>
     </main>
     {!user && <div className="overlay"><form className="modal login" onSubmit={login}><div className="brand-mark">A</div><p className="eyebrow">PRIVATE RESEARCH WORKSPACE</p><h2>Welcome to ARES.</h2><p>Use the access token configured in your hosted environment.</p><label htmlFor="token">Access token</label><input id="token" type="password" autoComplete="off" value={entry} onChange={event => setEntry(event.target.value)} required minLength={32}/><button className="primary" disabled={busy}>Open workspace ↗</button>{error && <p className="error" role="alert">{error}</p>}</form></div>}
