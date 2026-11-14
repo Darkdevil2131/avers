@@ -14,7 +14,7 @@ const STAGES = {
   reasoner_started: 'Preparing local reasoning', reasoner_completed: 'Local reasoning finished', planner_decision: 'Research strategy adjusted', queued: 'Research queued', plan: 'Research plan created',
   external_search_started: 'Searching Europe PMC',
   spider_fetch: 'Fetching open-access document', document_ingested: 'Full text stored', document_rejected: 'Document unavailable or license rejected', memory_retrieval: 'Retrieving project evidence', extract: 'Extracting candidate findings', critic: 'Checking evidence limits', hypothesize: 'Proposing follow-up tests', external_search_completed: 'Metadata received', external_search_failed: 'Source unavailable',
-  retrieve: 'Project passages retrieved', audit: 'Citation spans checked',
+  retrieval_started: 'Searching project evidence', retrieve: 'Project passages retrieved', audit: 'Citation spans checked',
   report: 'Report saved', failed: 'Research failed', cancelled: 'Research cancelled',
 };
 const TERMINAL = new Set(['completed', 'failed', 'cancelled']);
@@ -168,14 +168,14 @@ export function App() {
     link.href = url; link.download = filename; link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  async function downloadPdf(path, filename) {
+  async function downloadFile(path, filename) {
     try {
       const response = await fetch('/projects/' + project.id + path, {
         headers: {Authorization: 'Bearer ' + token},
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.detail || 'PDF download failed.');
+        throw new Error(error.detail || 'Download failed.');
       }
       saveDownload(await response.blob(), filename);
     } catch (exc) { setError(exc.message); }
@@ -246,7 +246,7 @@ export function App() {
           </form>
           <div className="results-grid">
             <section className="report-panel">
-              <div className="section-heading"><h2>Evidence report</h2>{report && <div><button className="quiet" onClick={download}>Download Markdown</button><button className="quiet" onClick={() => downloadPdf('/runs/' + run.id + '/report.pdf', 'ares-report.pdf')}>Download PDF</button></div>}</div>
+              <div className="section-heading"><h2>Evidence report</h2>{report && <div><button className="quiet" onClick={download}>Download Markdown</button><button className="quiet" onClick={() => downloadFile('/runs/' + run.id + '/report.pdf', 'ares-report.pdf')}>Download PDF</button><button className="quiet" onClick={() => downloadFile('/runs/' + run.id + '/report.json', 'ares-report.json')}>Download JSON</button></div>}</div>
               {report ? <>
                 <div className="assessment"><span className="assessment-badge">{report.assessment || 'inconclusive'}</span><span>{report.reviewed_claim ? 'Reviewed claim assessment at run time' : 'Scientific assessment requires review'}</span></div>
                 {report.outdated_sources.length > 0 && <p className="warning">Source reviews have changed since this report was saved. Start a new run to refresh the evidence.</p>}
@@ -259,7 +259,8 @@ export function App() {
                   <p>{report.collection.scope}</p>
                   {report.collection.bounded && <p className="warning">The collection limit was reached. This search is incomplete.</p>}
                   {report.collection.errors.map((item,i)=><p className="warning" key={i}>{item.stage}: {item.message}</p>)}
-                  <details><summary>Search strategy and queries</summary>{report.collection.queries.map((item,i)=><p key={i}>{item.strategy}: {item.query}</p>)}</details>
+                  {report.collection.adaptation && <p>Follow-up: {report.collection.adaptation.decision.replaceAll('_', ' ')} · Candidate study identifiers: {report.collection.adaptation.before.candidate_study_ids} before, {report.collection.adaptation.after.candidate_study_ids} after</p>}
+                  <details><summary>Search strategy and queries</summary>{report.collection.queries.map((item,i)=><div key={i}><p>{item.strategy}: {item.query}</p>{item.reason && <p>{item.reason}</p>}</div>)}</details>
                 </section>}
                 {report.findings?.length > 0 && <section><h3>Extracted candidate findings</h3><p>Exact source statements. Scientific meaning and study context still require review.</p>{report.findings.map((f,i)=><article className="citation" key={i}><span>{f.citation} · {f.method}</span><blockquote>{f.statement}</blockquote><p>Measurements found: {f.measurements.join(', ')||'none'}</p><ReportedExposure values={f.reported_exposure}/></article>)}</section>}
                 {report.critique && <details><summary>Evidence critic decision</summary><p>{report.critique.reason}</p>{report.critique.missing_checks.map(x=><p key={x}>{x}</p>)}{report.critique.potential_disagreements.map((pair,i)=><DisagreementReview key={i} pair={pair}/>)}{report.critique.rejected_proposals?.map((r,i)=><p key={'rejected'+i}>Rejected model proposal: {r.check.reasons.join('; ')}</p>)}</details>}
@@ -280,7 +281,7 @@ export function App() {
           </div>
         </> : tab === 'memory' && project ? <Memory key={project.id} api={api} project={project}/> : tab === 'evidence' && project ? <Evidence key={project.id} api={api} project={project} sources={sources} onResearchClaim={claim=>{setSelectedClaim(claim);setQuestion(claim.statement);setTab('research')}}/> : <section className="source-list">
           {!sources.length && <div className="empty-report"><h3>No sources yet</h3><p>Add text you have permission to use, with its source URL and license information.</p></div>}
-          {sources.map(source => <article key={source.id}><div><span className="source-icon">▤</span></div><div className="source-content"><h3>{source.title}</h3><a href={safeLink(source.url)} target="_blank" rel="noreferrer">{source.url}</a><p>{source.text.slice(0, 220)}{source.text.length > 220 ? '…' : ''}</p><span className={'source-status ' + source.status}>{source.status}</span><span className="source-kind">{source.origin.replaceAll('_', ' ')}</span>{source.origin === 'user_pdf' && <button className="quiet" onClick={() => downloadPdf('/sources/' + source.id + '/original.pdf', 'ares-source.pdf')}>Download original PDF</button>}</div><button className="quiet" disabled={project?.role === 'viewer'} onClick={() => setModal({ type: 'review', source })}>Review</button></article>)}
+          {sources.map(source => <article key={source.id}><div><span className="source-icon">▤</span></div><div className="source-content"><h3>{source.title}</h3><a href={safeLink(source.url)} target="_blank" rel="noreferrer">{source.url}</a><p>{source.text.slice(0, 220)}{source.text.length > 220 ? '…' : ''}</p><span className={'source-status ' + source.status}>{source.status}</span><span className="source-kind">{source.origin.replaceAll('_', ' ')}</span>{source.origin === 'user_pdf' && <button className="quiet" onClick={() => downloadFile('/sources/' + source.id + '/original.pdf', 'ares-source.pdf')}>Download original PDF</button>}</div><button className="quiet" disabled={project?.role === 'viewer'} onClick={() => setModal({ type: 'review', source })}>Review</button></article>)}
         </section>}
         <footer>ARES <span>Evidence stays traceable. Conclusions stay open to review.</span></footer>
         <BuildInfo backend={user?.build_revision}/>

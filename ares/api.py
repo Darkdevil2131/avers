@@ -238,6 +238,10 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
     def download_report(project_id: str, run_id: str, user=Depends(authenticate)):
         result = report(project_id, run_id, user)
         return PlainTextResponse(result["markdown"], headers={"Content-Disposition": 'attachment; filename="ares-report.md"'})
+    @app.get("/projects/{project_id}/runs/{run_id}/report.json")
+    def download_report_json(project_id: str, run_id: str, user=Depends(authenticate)):
+        result = report(project_id, run_id, user)
+        return JSONResponse(result, headers={"Content-Disposition": 'attachment; filename="ares-report.json"'})
     @app.get("/projects/{project_id}/runs/{run_id}/report.pdf")
     def download_report_pdf(project_id: str, run_id: str, user=Depends(limited)):
         result = report(project_id, run_id, user)
