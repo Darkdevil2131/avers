@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import ReviewedClaim from './ReviewedClaim';
 import { createRoot } from 'react-dom/client';
 import Scene from './Scene';
 import Evidence from './Evidence';
@@ -26,6 +27,7 @@ export function App() {
   const [run, setRun] = useState(null), [events, setEvents] = useState([]), [report, setReport] = useState(null);
   const [streamError, setStreamError] = useState(false), [streamAttempt, setStreamAttempt] = useState(0);
   const [question, setQuestion] = useState(''), [external, setExternal] = useState(false);
+  const [selectedClaim, setSelectedClaim] = useState(null);
   const [tab, setTab] = useState('research'), [modal, setModal] = useState(null), [busy, setBusy] = useState(false);
   const [reduced, setReduced] = useState(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const activeProject = useRef(null);
@@ -53,6 +55,7 @@ export function App() {
   useEffect(() => {
     activeProject.current = project?.id || null;
     setSources([]); setRuns([]); setRun(null); setReport(null); setEvents([]); setError('');
+    setSelectedClaim(null);
     if (project) refresh(project.id).catch(exc => setError(exc.message));
   }, [project?.id]);
   useEffect(() => {
@@ -108,7 +111,7 @@ export function App() {
     try {
       const created = await api('/projects/' + project.id + '/runs', {
         method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() },
-        body: JSON.stringify({ question, external }),
+        body: JSON.stringify({ question, external, ...(selectedClaim ? {claim_id: selectedClaim.id} : {}) }),
       });
       setEvents([]); setReport(null); setRun({ ...created, question }); setTab('research');
       await refresh(project.id);
@@ -210,15 +213,18 @@ export function App() {
           <form className="question-box" onSubmit={submit}>
             <label htmlFor="question">What would you like to investigate?</label>
             <textarea id="question" value={question} onChange={event => setQuestion(event.target.value)} minLength={8} maxLength={2000} required placeholder="How does humidity affect the stability of protective coatings?" rows={2}/>
+            {selectedClaim && <p>Assessing reviewed claim: {selectedClaim.statement} <button type="button" className="quiet" onClick={() => setSelectedClaim(null)}>Clear selection</button></p>}
             <div className="question-actions"><label className="checkbox"><input type="checkbox" checked={external} onChange={event => setExternal(event.target.checked)}/> Collect open-access literature</label><button className="primary" disabled={!project || busy || project.role === 'viewer'}>Start research <span>↗</span></button></div>
           </form>
           <div className="results-grid">
             <section className="report-panel">
               <div className="section-heading"><h2>Evidence report</h2>{report && <button className="quiet" onClick={download}>↓ Export</button>}</div>
               {report ? <>
-                <div className="assessment"><span className="assessment-badge">Inconclusive</span><span>Scientific assessment requires review</span></div>
+                <div className="assessment"><span className="assessment-badge">{report.assessment || 'inconclusive'}</span><span>{report.reviewed_claim ? 'Reviewed claim assessment at run time' : 'Scientific assessment requires review'}</span></div>
                 {report.outdated_sources.length > 0 && <p className="warning">Source reviews have changed since this report was saved. Start a new run to refresh the evidence.</p>}
+                {report.review_links_changed && <p className="warning">Reviewed evidence was added after this assessment. Start a new run to include it.</p>}
                 <h3>{report.question}</h3>{report.summary_status && <small>{report.summary_status}</small>}<p>{report.summary}</p>{report.reasoner && <p>Local reasoning: {report.reasoner.status}{report.reasoner.reason ? ' — ' + report.reasoner.reason : ''}</p>}
+                {report.reviewed_claim && <ReviewedClaim claim={report.reviewed_claim}/>}
                 {report.retrieval && <p className="warning">Retrieval: {report.retrieval.mode} · {report.retrieval.dense_available ? 'Dense embeddings + keyword search' : report.retrieval.reason || 'No indexed passages'}</p>}
                 {report.collection && <section aria-label="Source collection"><h3>Source collection</h3>
                   <p>Status: {report.collection.status.replaceAll('_', ' ')} · {report.collection.metadata_records} metadata records · {report.collection.fulltext_stored} full texts stored</p>
@@ -244,7 +250,7 @@ export function App() {
               {events.length ? <ol className="timeline">{events.map(event => <li key={event.id}><span className={'event-icon ' + (event.stage.includes('failed') ? 'failed' : '')}/><div><strong>{STAGES[event.stage] || event.stage}</strong><p>{event.payload.message || (event.payload.count !== undefined ? event.payload.count + ' records received' : event.payload.exact_spans_checked !== undefined ? event.payload.exact_spans_checked + ' exact spans checked' : event.payload.passages !== undefined ? event.payload.passages + ' matching passages' : event.stage === 'report' ? 'Report persisted with citations' : '')}</p><time>{new Date(event.created_at).toLocaleTimeString()}</time></div></li>)}</ol> : <p className="muted">Run activity will appear here.</p>}
             </section>
           </div>
-        </> : tab === 'memory' && project ? <Memory key={project.id} api={api} project={project}/> : tab === 'evidence' && project ? <Evidence key={project.id} api={api} project={project} sources={sources}/> : <section className="source-list">
+        </> : tab === 'memory' && project ? <Memory key={project.id} api={api} project={project}/> : tab === 'evidence' && project ? <Evidence key={project.id} api={api} project={project} sources={sources} onResearchClaim={claim=>{setSelectedClaim(claim);setQuestion(claim.statement);setTab('research')}}/> : <section className="source-list">
           {!sources.length && <div className="empty-report"><h3>No sources yet</h3><p>Add text you have permission to use, with its source URL and license information.</p></div>}
           {sources.map(source => <article key={source.id}><div><span className="source-icon">▤</span></div><div className="source-content"><h3>{source.title}</h3><a href={safeLink(source.url)} target="_blank" rel="noreferrer">{source.url}</a><p>{source.text.slice(0, 220)}{source.text.length > 220 ? '…' : ''}</p><span className={'source-status ' + source.status}>{source.status}</span><span className="source-kind">{source.origin.replaceAll('_', ' ')}</span></div><button className="quiet" disabled={project?.role === 'viewer'} onClick={() => setModal({ type: 'review', source })}>Review</button></article>)}
         </section>}

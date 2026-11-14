@@ -1,13 +1,15 @@
 # Master design acceptance
 
-The 31-page *ARES–Noesis Master Research and System Design* defines the scope. The table maps its sections to the current implementation and the evidence still needed for release. Automated assessments remain inconclusive pending scientific validation.
+The 31-page *ARES–Noesis Master Research and System Design* defines the scope. The table maps its sections to the current implementation and the evidence still needed for release. Unreviewed findings continue to receive an inconclusive assessment. Claim-linked runs can summarize explicitly recorded reviewer judgments.
+
+To use this workflow, record a claim and evidence links in **Evidence review**, then select **Research this claim**. The report saves the eligible and excluded links together with their review IDs and source spans. A new review or source retraction flags older reports as stale. If there are more than 100 links, the report shows the first 100 and abstains. For PostgreSQL, apply the normal administrative migration before starting the updated API and worker.
 
 | Design area | Implementation | Release evidence still needed |
 | --- | --- | --- |
 | Executive and domain agents (pp. 8–12) | Bounded collection and counterevidence policy, persistent queue, task events and optional local proposals | Adaptive task graph with budgets and tool preconditions, domain-specific agents and falsification, comparisons with a static planner |
 | RAG and source acquisition (pp. 12–13) | Lexical and dense retrieval, reranking, fixed Europe PMC/NCBI endpoints and license checks | Broader domain sources, scalable vector indexing, connector drift tests and measured coverage under a fixed budget |
 | Document intelligence and provenance (pp. 12–15) | Exact text offsets, source hashes and stored structured full-text objects | PDF/OCR, tables and equations with location validation and isolated parser acceptance |
-| Evidence assessment and independence (pp. 13–16, 20–22) | Reviewer-entered context, exact-span evidence links, source review history, shared study identifiers and bounded extraction of explicit exposure values | Expert-labeled context and stance validation, study-quality appraisal, underlying study/dataset/cohort identity and correction feeds |
+| Evidence assessment and independence (pp. 13–16, 20–22) | Claim-linked runs snapshot reviewer-entered support or opposition with exact spans, exclusions, and study identifier groups. The critic also compares reviewed fields and explicit exposure values. | Expert-labeled context and stance validation, study-quality appraisal, underlying study/dataset/cohort identity and correction feeds |
 | Reasoning, hypotheses and experiments (pp. 9–15) | Descriptive statistics, unit conversion, versioned proposals, review flags and a controlled comparison template for coating exposures | Capability-aware routing, validated statistics/causal/graph tools, prior-art search, broader domain experiment plans and expert review |
 | Security and data (pp. 15–17, 20–22) | Authenticated project access, database row-level policies, source/run snapshots and disposable backup restoration | Production threat review, dependency checks, least-privilege worker review, production backup recovery and observability |
 | Memory and reproducibility (pp. 2, 11, 17) | Pending memory, reviewed relevance feedback, recorded queries and report events | Frozen replay inputs and artifact versions, validation of feedback impact, poisoning evaluation and reproducible offline training if added |

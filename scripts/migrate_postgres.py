@@ -38,6 +38,8 @@ def migrate(dsn):
           GRANT USAGE ON SCHEMA public TO ares_app,ares_worker;
           GRANT SELECT,INSERT,UPDATE ON schema_versions,projects,memberships,sources,runs,passages,run_state,audit_events,embeddings,claims,hypotheses,research_memory,feedback,source_details,source_reviews,documents,reports,run_events,evidence_links TO ares_app,ares_worker;
           GRANT USAGE,SELECT ON source_reviews_id_seq,run_events_id_seq,audit_events_id_seq,feedback_id_seq TO ares_app,ares_worker;
+          GRANT SELECT,INSERT ON run_claims TO ares_app;
+          GRANT SELECT ON run_claims TO ares_worker;
           CREATE INDEX IF NOT EXISTS passages_text_gin ON passages USING gin(to_tsvector('english',text));
           CREATE INDEX IF NOT EXISTS passages_project_idx ON passages(project_id);
           CREATE INDEX IF NOT EXISTS sources_project_idx ON sources(project_id);
@@ -51,7 +53,8 @@ def migrate(dsn):
           'documents':'(SELECT project_id FROM sources WHERE id=source_id)',
           'reports':'(SELECT project_id FROM runs WHERE id=run_id)',
           'run_events':'(SELECT project_id FROM runs WHERE id=run_id)',
-          'evidence_links':'(SELECT project_id FROM claims WHERE id=claim_id)'}
+          'evidence_links':'(SELECT project_id FROM claims WHERE id=claim_id)',
+          'run_claims':'project_id'}
         from psycopg import sql
         for table,scope in scopes.items():
             name=sql.Identifier(table)
@@ -68,7 +71,7 @@ def migrate(dsn):
             db.execute(sql.SQL('CREATE POLICY update_scope ON {} FOR UPDATE TO ares_app USING ('+write+') WITH CHECK ('+write+')').format(name))
             db.execute(sql.SQL('CREATE POLICY worker_scope ON {} TO ares_worker USING (true) WITH CHECK (true)').format(name))
         db.execute('''CREATE OR REPLACE FUNCTION ares_immutable() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Immutable ARES record'; END $$;''')
-        for table in ('sources','runs','reports','source_reviews','run_events','audit_events','claims','evidence_links','hypotheses','documents'):
+        for table in ('sources','runs','reports','source_reviews','run_events','audit_events','claims','evidence_links','hypotheses','documents','run_claims'):
             name=sql.Identifier(table)
             db.execute(sql.SQL('DROP TRIGGER IF EXISTS immutable ON {}').format(name))
             db.execute(sql.SQL('CREATE TRIGGER immutable BEFORE UPDATE OR DELETE ON {} FOR EACH ROW EXECUTE FUNCTION ares_immutable()').format(name))

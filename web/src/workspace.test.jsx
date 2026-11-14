@@ -112,6 +112,41 @@ test('hypothesis form records mechanism and falsification',async()=>{
  await waitFor(()=>expect(saved?.predecessor).toBeNull());
  expect(saved.mechanism).toBe('Water absorption changes the polymer');
 });
+test('researching a reviewed claim preserves its identity and renders its evidence assessment', async () => {
+ const user = userEvent.setup();
+ const claim = {id:'claim-1', statement:'Humidity affects coating stability.', assessment:'mixed', evidence:[]};
+ let submitted;
+ let run;
+ vi.spyOn(globalThis,'fetch').mockImplementation(async (url, options = {}) => {
+  if (url === '/session') return reply({username:'researcher'});
+  if (url === '/projects') return reply([project]);
+  if (url.endsWith('/claims')) return reply([claim]);
+  if (url.endsWith('/runs') && options.method === 'POST') {
+   submitted = JSON.parse(options.body);
+   run = {id:'review-run', question:submitted.question, status:'completed'};
+   return reply(run);
+  }
+  if (url.endsWith('/runs')) return reply(run ? [run] : []);
+  if (url.endsWith('/stream')) return new Response('event: done\ndata: {"status":"completed"}\n\n');
+  if (url.endsWith('/runs/review-run')) return reply(run);
+  if (url.endsWith('/report')) return reply({
+   question:run.question, summary:'Evidence snapshot saved.', assessment:'mixed',
+   outdated_sources:[], citations:[], limitations:[],
+   reviewed_claim:{statement:claim.statement, reason:'Eligible reviewed links support and oppose the selected claim.', evidence:[]},
+  });
+  return reply([]);
+ });
+ render(<App/>);
+ await user.type(screen.getByLabelText('Access token'),'x'.repeat(32));
+ await user.click(screen.getByRole('button',{name:/Open workspace/}));
+ await user.click(screen.getByRole('button',{name:/Evidence review/}));
+ await user.click(await screen.findByRole('button',{name:'Research this claim'}));
+ await user.click(screen.getByRole('button',{name:/Start research/}));
+ await screen.findByRole('region',{name:'Reviewed claim assessment'});
+ expect(submitted.claim_id).toBe(claim.id);
+ expect(screen.getByText('Eligible reviewed links support and oppose the selected claim.')).toBeTruthy();
+});
+
 test('dialog errors are visible and Escape closes it',async()=>{
  const user=userEvent.setup();
  vi.spyOn(globalThis,'fetch').mockImplementation(async(url,opts={})=>{

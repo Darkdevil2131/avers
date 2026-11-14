@@ -5,7 +5,7 @@ const phases=[
   {name:'Evidence retrieval',kind:'Project RAG',stages:['memory_retrieval','retrieve','audit'],detail:p=>p.exact_spans_checked!==undefined?`${p.exact_spans_checked} citation spans checked`:p.passages!==undefined?`${p.passages} passages retrieved`:p.reason||p.mode||'Retrieval recorded'},
   {name:'Hypothesis proposer',kind:'Optional local model',stages:['reasoner_started','reasoner_completed','hypothesize'],detail:p=>p.reason||p.status||(p.proposals!==undefined?`${p.proposals} ${p.type}`:'Inference requested')},
   {name:'Evidence critic',kind:'Rules · human review required',stages:['critic'],detail:p=>p.reason||'Review decision recorded'},
-  {name:'Report & memory',kind:'Persistent evidence record',stages:['report'],detail:()=> 'Report saved · scientific assessment inconclusive'},
+  {name:'Report & memory',kind:'Persistent evidence record',stages:['report'],detail:p=>p.assessment ? 'Report saved · ' + p.assessment : 'Report saved'},
 ];
 export default function Workflow({events=[],run}){
   return <section className="workflow" aria-label="Research workflow">

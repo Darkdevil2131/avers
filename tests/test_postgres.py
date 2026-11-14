@@ -77,3 +77,14 @@ def test_postgres_report_uses_reviewed_context():
     app = create_app(os.environ['ARES_TEST_POSTGRES'], credentials)
     with TestClient(app, headers={'Authorization': 'Bearer ' + credentials['context-review']}) as api:
         check_report_context(api)
+
+
+def test_postgres_reviewed_claim_report_lifecycle():
+    from ares.api import create_app
+    from test_claim_runs import exercise_claim_run
+    from test_research import KEYS
+
+    credentials = {'claim-review': 'v' * 40, 'bob': KEYS['bob']}
+    app = create_app(os.environ['ARES_TEST_POSTGRES'], credentials)
+    with TestClient(app, headers={'Authorization': 'Bearer ' + credentials['claim-review']}) as api:
+        exercise_claim_run(api)

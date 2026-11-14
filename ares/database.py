@@ -110,8 +110,10 @@ class Database:
         return [dict(row) for row in rows]
     def run(self, db, project_id, run_id):
         row = db.execute("""
-            SELECT r.*,s.status,s.attempts,s.error,s.cancelled,s.external
-            FROM runs r JOIN run_state s ON s.run_id=r.id WHERE r.id=? AND r.project_id=?
+            SELECT r.*,s.status,s.attempts,s.error,s.cancelled,s.external,rc.claim_id
+            FROM runs r JOIN run_state s ON s.run_id=r.id
+            LEFT JOIN run_claims rc ON rc.run_id=r.id
+            WHERE r.id=? AND r.project_id=?
         """, (run_id, project_id)).fetchone()
         return dict(row) if row else None
     def report(self, db, project_id, run_id):
@@ -122,10 +124,26 @@ class Database:
         if row is None:
             return None
         payload = json.loads(row["payload"])
-        changed = []
-        for citation in payload["citations"]:
-            version = db.execute("SELECT coalesce(max(id),0) FROM source_reviews WHERE source_id=?",
-                                 (citation["source_id"],)).fetchone()[0]
-            if version != citation["review_version"]:
-                changed.append(citation["source_id"])
-        return {**payload, "markdown": export_markdown(row["markdown"], payload, changed), "outdated_sources": sorted(set(changed))}
+        reviewed = payload.get("reviewed_claim")
+        references = payload["citations"] + (reviewed["evidence"] if reviewed else [])
+        source_ids = sorted({item["source_id"] for item in references})
+        current_versions = {}
+        if source_ids:
+            placeholders = ",".join("?" for _ in source_ids)
+            current_versions = {row["source_id"]: row["version"] for row in db.execute(
+                f"SELECT source_id,max(id) AS version FROM source_reviews WHERE source_id IN ({placeholders}) GROUP BY source_id",
+                source_ids,
+            )}
+        changed = {item["source_id"] for item in references
+                   if current_versions.get(item["source_id"], 0) != item["review_version"]}
+        review_links_changed = False
+        if reviewed:
+            link_count = db.execute("""
+                SELECT count(*) FROM evidence_links e
+                JOIN sources s ON s.id=e.source_id AND s.project_id=?
+                WHERE e.claim_id=?
+            """, (project_id, reviewed["claim_id"])).fetchone()[0]
+            review_links_changed = link_count != reviewed["link_count"]
+        return {**payload,
+                "markdown": export_markdown(row["markdown"], payload, changed, review_links_changed),
+                "outdated_sources": sorted(changed), "review_links_changed": review_links_changed}

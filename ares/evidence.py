@@ -103,9 +103,9 @@ def assess(db, claim):
     rows = db.execute("""
         SELECT e.*,coalesce(d.study_id,s.url) AS study_id,s.url,
         coalesce((SELECT status FROM source_reviews WHERE source_id=e.source_id ORDER BY id DESC LIMIT 1),'active') AS source_status
-        FROM evidence_links e JOIN sources s ON s.id=e.source_id
+        FROM evidence_links e JOIN sources s ON s.id=e.source_id AND s.project_id=?
         LEFT JOIN source_details d ON d.source_id=e.source_id WHERE e.claim_id=? ORDER BY e.created_at,e.id
-    """, (claim["id"],)).fetchall()
+    """, (claim["project_id"], claim["id"])).fetchall()
     evidence, stances, groups = [], set(), set()
     for row in rows:
         item = dict(row)
@@ -132,3 +132,82 @@ def assess(db, claim):
             "basis": "reviewer-entered evidence relationships", "calibrated": False,
             "confidence": None, "study_groups": len(groups), "independence_verified": False,
             "evidence": evidence}
+
+
+REVIEWED_LINK_LIMIT = 100
+
+
+def snapshot_reviewed_claim(db, project_id, run_id):
+    """Summarize recorded reviewer stances for the claim explicitly selected for a run."""
+    claim = db.execute("""
+        SELECT c.* FROM run_claims rc JOIN claims c
+          ON c.id=rc.claim_id AND c.project_id=rc.project_id
+        WHERE rc.run_id=? AND rc.project_id=?
+    """, (run_id, project_id)).fetchone()
+    if claim is None:
+        return None
+
+    rows = db.execute("""
+        SELECT e.id, e.source_id, e.start_offset, e.end_offset, substr(e.quote,1,2000) AS quote, e.stance,
+               e.fingerprint, e.rationale, s.url, s.digest,
+               CASE WHEN e.start_offset >= 0 AND e.end_offset > e.start_offset
+                    AND e.end_offset <= length(s.text) AND length(trim(e.quote)) > 0
+                    THEN substr(s.text, e.start_offset + 1, e.end_offset - e.start_offset)=e.quote
+                    ELSE FALSE END AS valid_span,
+               coalesce(d.title,s.url) AS title, coalesce(d.study_id,s.url) AS study_id,
+               coalesce(d.origin,'user_supplied') AS origin,
+               coalesce((SELECT sr.status FROM source_reviews sr WHERE sr.source_id=s.id
+                         ORDER BY sr.id DESC LIMIT 1),'active') AS source_status,
+               coalesce((SELECT max(sr.id) FROM source_reviews sr WHERE sr.source_id=s.id),0) AS review_version,
+               count(*) OVER () AS link_count
+        FROM evidence_links e
+        JOIN sources s ON s.id=e.source_id AND s.project_id=?
+        LEFT JOIN source_details d ON d.source_id=s.id
+        WHERE e.claim_id=?
+        ORDER BY e.created_at,e.id LIMIT ?
+    """, (project_id, claim['id'], REVIEWED_LINK_LIMIT)).fetchall()
+    count = rows[0]['link_count'] if rows else 0
+    fingerprint = json.loads(claim['fingerprint'])
+    evidence, stances, groups = [], set(), {}
+    for row in rows:
+        item = dict(row)
+        item.pop('link_count')
+        context = compare_context(fingerprint, json.loads(item.pop('fingerprint')))
+        item['context'] = context
+        reasons = []
+        if item['source_status'] != 'active':
+            reasons.append('source-' + item['source_status'])
+        if item['origin'].endswith('_metadata'):
+            reasons.append('metadata-only')
+        if not item.pop('valid_span'):
+            reasons.append('source-span-invalid')
+            item['quote'] = ''
+        item['quote_truncated'] = bool(item['quote']) and item['end_offset'] - item['start_offset'] > 2000
+        if context['state'] != 'compatible':
+            reasons.append(context['state'])
+        if item['stance'] == 'neutral':
+            reasons.append('neutral-stance')
+        item['exclusions'] = reasons
+        if not reasons:
+            stances.add(item['stance'])
+            groups.setdefault(item['study_id'], set()).add(item['stance'])
+        evidence.append(item)
+
+    if count > REVIEWED_LINK_LIMIT:
+        status = 'inconclusive'
+        reason = 'The evidence review limit was exceeded. This report contains only the first 100 links.'
+    elif stances == {'supports', 'contradicts'}:
+        status, reason = 'mixed', 'Eligible reviewed links support and oppose the selected claim.'
+    elif stances == {'supports'}:
+        status, reason = 'supported', 'Eligible reviewed links support the selected claim.'
+    elif stances == {'contradicts'}:
+        status, reason = 'contradicted', 'Eligible reviewed links oppose the selected claim.'
+    else:
+        status, reason = 'inconclusive', 'No eligible reviewed links support or oppose the selected claim.'
+    return {
+        'claim_id': claim['id'], 'statement': claim['statement'], 'fingerprint': fingerprint,
+        'assessment': status, 'reason': reason, 'basis': 'Reviewer-entered evidence relationships',
+        'calibrated': False, 'independence_verified': False, 'link_count': count,
+        'study_groups': [{'identifier': key, 'stances': sorted(values)} for key, values in sorted(groups.items())],
+        'evidence': evidence,
+    }
