@@ -33,6 +33,20 @@ export function ExperimentPlan({plan, evidence}) {
   </details>;
 }
 
+export function PriorArt({screen}) {
+  if (!screen) return null;
+  return <details>
+    <summary>Literature title screen</summary>
+    <p>{screen.status.replaceAll('_', ' ')}. Novelty remains unverified.</p>
+    <p>{screen.scope}</p>
+    <ul>{screen.matches.map((item, index) => <li key={index}>
+      {/^(https?):\/\//i.test(item.url)
+        ? <a href={item.url} target="_blank" rel="noreferrer">{item.title}</a> : item.title}
+      {' · ' + item.matched_terms.join(', ')}
+    </li>)}</ul>
+  </details>;
+}
+
 export default function ProposalReview({check}) {
   const direction = check?.direction_check;
   return <aside aria-label="Proposal review limits">

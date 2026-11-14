@@ -9,6 +9,7 @@ from .retrieval import hybrid_search
 from .agents import plan, extract, critique, propose, propose_exposure_test, proposal_critic
 from uuid import uuid4
 from .local_reasoner import suggest
+from .prior_art import screen_prior_art
 STAGES = (
     {"id": "plan", "requires": [], "tool": "plan"},
     {"id": "retrieve", "requires": ["plan"], "tool": "project_search"},
@@ -136,6 +137,9 @@ class ResearchEngine:
             if exposure_proposal:
                 proposals.append(exposure_proposal)
             if not proposals:proposals=propose(findings,run["question"])
+            for proposal in proposals:
+                proposal["prior_art"] = screen_prior_art(
+                    proposal, run["question"], citations, collector.records, collection)
             criticism['rejected_proposals']=rejected
             with dbs.connect() as db:
                 db.execute("BEGIN IMMEDIATE")

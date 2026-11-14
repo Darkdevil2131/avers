@@ -105,3 +105,19 @@ def test_bioc_requires_matching_identity_and_license():
     with pytest.raises(ValueError):parse_bioc(raw,'PMC2')
     data[0]['documents'][0]['infons']['license']='All rights reserved'
     with pytest.raises(ValueError):parse_bioc(json.dumps(data).encode(),'PMC1')
+
+
+def test_open_access_jats_table_preserves_rows_headers_and_spans():
+    table = b'''<table-wrap id="t1"><label>Table 1</label><caption>Exposure results</caption>
+    <table><thead><tr><th rowspan="2">Coating</th><th colspan="2">Humidity</th></tr>
+    <tr><th>50%</th><th>80%</th></tr></thead>
+    <tbody><tr><td>A</td><td>10</td><td><bold>20</bold></td></tr></tbody></table></table-wrap>'''
+    doc = parse_jats(XML.replace(b'</sec>', table + b'</sec>'), 'PMC123')
+    parsed, = doc['document']['tables']
+    assert parsed['id'] == 't1' and parsed['caption'] == 'Exposure results'
+    assert [len(row) for row in parsed['rows']] == [2, 2, 3]
+    assert parsed['rows'][0][0]['rowspan'] == '2'
+    assert parsed['rows'][0][1]['colspan'] == '2'
+    assert parsed['rows'][0][0]['header']
+    assert parsed['rows'][2][2]['text'] == '20'
+    assert not doc['document']['tables_bounded']
