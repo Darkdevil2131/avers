@@ -6,7 +6,7 @@ import Memory from './Memory';
 import ProposalReview from './ProposalReview';
 import Workflow from './Workflow';
 import BuildInfo from './BuildInfo';
-import DisagreementReview from './DisagreementReview';
+import DisagreementReview, {ReportedExposure} from './DisagreementReview';
 import './style.css';
 const STAGES = {
   collection_summary: 'Source collection recorded',
@@ -227,7 +227,7 @@ export function App() {
                   {report.collection.errors.map((item,i)=><p className="warning" key={i}>{item.stage}: {item.message}</p>)}
                   <details><summary>Search strategy and queries</summary>{report.collection.queries.map((item,i)=><p key={i}>{item.strategy}: {item.query}</p>)}</details>
                 </section>}
-                {report.findings?.length > 0 && <section><h3>Extracted candidate findings</h3><p>Exact source statements. Scientific meaning and study context still require review.</p>{report.findings.map((f,i)=><article className="citation" key={i}><span>{f.citation} · {f.method}</span><blockquote>{f.statement}</blockquote><p>Measurements found: {f.measurements.join(', ')||'none'}</p></article>)}</section>}
+                {report.findings?.length > 0 && <section><h3>Extracted candidate findings</h3><p>Exact source statements. Scientific meaning and study context still require review.</p>{report.findings.map((f,i)=><article className="citation" key={i}><span>{f.citation} · {f.method}</span><blockquote>{f.statement}</blockquote><p>Measurements found: {f.measurements.join(', ')||'none'}</p><ReportedExposure values={f.reported_exposure}/></article>)}</section>}
                 {report.critique && <details><summary>Evidence critic decision</summary><p>{report.critique.reason}</p>{report.critique.missing_checks.map(x=><p key={x}>{x}</p>)}{report.critique.potential_disagreements.map((pair,i)=><DisagreementReview key={i} pair={pair}/>)}{report.critique.rejected_proposals?.map((r,i)=><p key={'rejected'+i}>Rejected model proposal: {r.check.reasons.join('; ')}</p>)}</details>}
                 {report.hypotheses?.map((h,i)=><article className="citation" key={'h'+i}><h3>Follow-up proposal · requires review</h3><p>{h.statement}</p><blockquote>{h.basis_quote}</blockquote><p>{h.mechanism}</p><p>Falsification: {h.falsification}</p><ProposalReview check={h.consistency_check}/><p>No experiment has been executed. Novelty has not been established.</p></article>)}
                 {report.citations.map(citation => <article className="citation" key={citation.label}>
