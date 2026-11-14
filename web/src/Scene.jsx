@@ -37,7 +37,7 @@ export default function Scene({ sources, cited, reduced, activity, running }) {
         });
         let frame=0;
         const collecting=running && activity?.stage === 'spider_fetch';
-        const querying=running && ['memory_retrieval','retrieve'].includes(activity?.stage);
+        const querying=running && ['retrieval_started','memory_retrieval','retrieve'].includes(activity?.stage);
         if (collecting) {
           // The web represents collection activity, not invented source connections.
           for(let ring=1;ring<=4;ring++) {
