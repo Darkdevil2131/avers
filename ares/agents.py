@@ -1,5 +1,6 @@
 import re
 from collections import Counter
+from .evidence import compare_reviewed_findings
 from .text_spans import sentence_spans
 WORDS=re.compile(r'[A-Za-z][A-Za-z-]{2,}')
 STOP=set('the and with from that this were was are for not but study studies results effect effects'.split())
@@ -50,7 +51,7 @@ def extract(citations,question):
     # Keep a small review queue; scores measure relevance, never entailment/truth.
     return findings[:3]
 
-def critique(findings,citations):
+def critique(findings,citations,reviewed_contexts=None):
     pairs=[]
     sources={c['label']:c for c in citations}
     for index,left in enumerate(findings):
@@ -66,11 +67,13 @@ def critique(findings,citations):
                 left_source=sources.get(left['citation'],{})
                 right_source=sources.get(right['citation'],{})
                 same_study=bool(left_source.get('study_id') and left_source.get('study_id')==right_source.get('study_id'))
+                context = compare_reviewed_findings(left, right, reviewed_contexts or {})
                 pairs.append({'left':left['citation'],'right':right['citation'],'state':'potential_disagreement',
                               'reason':('Related wording with opposing direction words' if opposing else 'Related wording with different negation')+'; context is not verified',
                               'left_statement':left['statement'],'right_statement':right['statement'],
                               'signal':'opposing_direction' if opposing else 'different_negation',
                               'same_study_identifier':same_study,
+                              'reviewed_context':context,
                               'review_questions':['Do both findings measure the same outcome with compatible units?',
                                                   'Do population or material, exposure, comparator and timeframe match?',
                                                   'Do uncertainty intervals and study designs justify comparing the effects?',

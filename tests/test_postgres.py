@@ -67,3 +67,13 @@ def test_postgres_worker_lease_fencing(monkeypatch):
     app = create_app(os.environ['ARES_TEST_POSTGRES'], {'fence': 'f'*40}, auto_process=False)
     for outcome in ['replacement', 'replacement_then_error', 'cancel_then_error', 'expire_only']:
         check_lease_fencing(app, monkeypatch, outcome)
+
+
+def test_postgres_report_uses_reviewed_context():
+    from ares.api import create_app
+    from test_critic_disagreements import check_report_context
+
+    credentials = {'context-review': 'r' * 40}
+    app = create_app(os.environ['ARES_TEST_POSTGRES'], credentials)
+    with TestClient(app, headers={'Authorization': 'Bearer ' + credentials['context-review']}) as api:
+        check_report_context(api)
