@@ -13,6 +13,13 @@ def export_markdown(saved, payload, changed):
     lines += ['Local reasoning status: '+reasoner.get('status','not recorded')]
     if reasoner.get('reason'):lines += ['Reason: '+reasoner['reason']]
     lines += ['- '+x for x in reasoner.get('critic_warnings',[])]
+    for pair in (payload.get('critique') or {}).get('potential_disagreements',[]):
+        lines += ['', '### Potential evidence disagreement — requires review',
+                  f"[{pair['left']}] / [{pair['right']}]: {pair['reason']}"]
+        if pair.get('left_statement'):lines += [pair['left_statement']]
+        if pair.get('right_statement'):lines += [pair['right_statement']]
+        if pair.get('same_study_identifier'):lines += ['Both citations share a study identifier; do not count them as independent studies.']
+        lines += ['- '+question for question in pair.get('review_questions',[])]
     for item in (payload.get('critique') or {}).get('rejected_proposals',[]):
         lines += ['', '### Rejected model proposal', item['candidate'].get('statement','Statement not recorded')]
         lines += ['- '+x for x in item['check'].get('reasons',[])]
