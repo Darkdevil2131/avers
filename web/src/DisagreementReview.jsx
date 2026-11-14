@@ -19,7 +19,7 @@ export function ReportedExposure({values}) {
   return <details>
     <summary>Conditions stated in this finding</summary>
     <ul>{fields.map(([field, value]) => <li key={field}>
-      {conditionLabels[field]}: {value.quote} (characters {value.start_offset}–{value.end_offset})
+      {conditionLabels[field]}{value.stage ? ' · ' + value.stage : ''}: {value.quote} (characters {value.start_offset}–{value.end_offset})
     </li>)}</ul>
   </details>;
 }

@@ -1,0 +1,64 @@
+{
+  "scope": "Purpose-selected published wording for development. Single-reviewer labels do not validate end-to-end retrieval, scientific comparability, or production accuracy.",
+  "cases": [
+    {
+      "id": "latex-conditioning-duration-first",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7918373/",
+      "section": "2.6.3 Strength Property Measurement",
+      "text": "The dried coating layers were then conditioned for 24 h at a constant temperature of 23 °C and a relative humidity of 50%.",
+      "expected": {"temperature": "23", "relative_humidity": "50", "duration": "24"}
+    },
+    {
+      "id": "tps-pbat-conditioning-prior-to-testing",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12939795/",
+      "section": "2.7 Mechanical Properties",
+      "text": "Film strips (10 × 2.5 cm²) were conditioned at 25 °C and 50% relative humidity for 48 h prior to testing.",
+      "expected": {"temperature": "25", "relative_humidity": "50", "duration": "48"}
+    },
+    {
+      "id": "mater-bi-conditioning-after-sealing",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13030019/",
+      "section": "2.7 Heat-Seal Tests",
+      "text": "After sealing, the samples were conditioned at 23 °C and 50% relative humidity for 48 h prior to mechanical testing.",
+      "expected": {"temperature": "23", "relative_humidity": "50", "duration": "48"}
+    },
+    {
+      "id": "pla-coating-conditioning-lab",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12473213/",
+      "section": "2.5 Coating of PLAX Dispersions",
+      "text": "Coated samples were conditioned at laboratory conditions of 23 °C and 50% relative humidity before characterization.",
+      "expected": {"temperature": "23", "relative_humidity": "50"}
+    },
+    {
+      "id": "pectin-conditioning-interleaved",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9659057/",
+      "section": "2.9 Preparation and Characterization of CNFs/Pectin/PGE Films",
+      "text": "The produced films were conditioned at 50% relative humidity for 48 h at 25 °C before testing.",
+      "expected": {"temperature": "25", "relative_humidity": "50", "duration": "48"}
+    },
+    {
+      "id": "paint-lab-tolerances",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11052362/",
+      "section": "Methods, coating performance tests",
+      "text": "All performance tests were carried out on the coating under laboratory conditions (23 ± 2 °C, 50 ± 5%RH).",
+      "expected": {},
+      "note": "Both values contain tolerances. Their central values alone are not exact point conditions."
+    },
+    {
+      "id": "polyurethane-air-range",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13165542/",
+      "section": "2.3 Exposure in Natural Ageing",
+      "text": "the indoor temperature was maintained within the range of 20–25 °C, and the relative humidity fluctuated between 50% and 55%",
+      "expected": {},
+      "note": "Selected clause contains ranges rather than point conditions."
+    },
+    {
+      "id": "rubber-aging-multiple-arms",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11767060/",
+      "section": "Artificial aging methods",
+      "text": "Test temperatures of 40 °C, 60 °C, and 90 °C were selected",
+      "expected": {},
+      "note": "Selected clause contains three design temperatures."
+    }
+  ]
+}
