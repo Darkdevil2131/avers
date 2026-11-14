@@ -3,6 +3,7 @@ import time
 from collections import deque
 from threading import Lock
 from starlette.responses import JSONResponse
+from .pdf_documents import PDF_BYTES
 class BodyLimit:
     def __init__(self, app, limit=512_000, timeout=15):
         self.app, self.limit, self.timeout = app, limit, timeout
@@ -10,6 +11,10 @@ class BodyLimit:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
         parts = []
+        path = scope.get("path", "")
+        is_pdf_upload = (scope.get("method") == "POST" and path.startswith("/projects/")
+                         and path.endswith("/sources/pdf"))
+        limit = PDF_BYTES if is_pdf_upload else self.limit
         total = 0
         deadline = time.monotonic() + self.timeout
         while True:
@@ -21,8 +26,9 @@ class BodyLimit:
                 return
             data = message.get("body", b"")
             total += len(data)
-            if total > self.limit:
-                return await JSONResponse({"detail": "Request exceeds 512 KB"}, status_code=413)(scope, receive, send)
+            if total > limit:
+                detail = "PDF exceeds 2 MB" if is_pdf_upload else "Request exceeds 512 KB"
+                return await JSONResponse({"detail": detail}, status_code=413)(scope, receive, send)
             parts.append(data)
             if not message.get("more_body", False):
                 break

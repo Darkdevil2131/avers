@@ -18,6 +18,7 @@ jobs:
         with:
           node-version: '22'
       - run: python -m pip install -r requirements.lock
+      - run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr-eng util-linux fonts-dejavu-core
       - run: python -m pytest -q
       - run: npm ci && npm test && npm run build
         working-directory: web

@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import hashlib
 import json
 import os
@@ -8,13 +9,15 @@ from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Request
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from .database import AccessDenied, StorageBudget, Database, now
 from .evidence import ClaimInput, EvidenceInput, HypothesisInput, assess
 from .providers import EuropePMC
+from .pdf_documents import DocumentError, DocumentUnavailable, parse_pdf
+from .pdf_export import FONT_PATH, MAX_REPORT_CHARS, PDF_EXPORT_SLOTS, render_report
 from .research import ResearchEngine
 from .retrieval import hybrid_search
 from .security import BodyLimit, IngressLimit, RateLimit
@@ -235,6 +238,47 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
     def download_report(project_id: str, run_id: str, user=Depends(authenticate)):
         result = report(project_id, run_id, user)
         return PlainTextResponse(result["markdown"], headers={"Content-Disposition": 'attachment; filename="ares-report.md"'})
+    @app.get("/projects/{project_id}/runs/{run_id}/report.pdf")
+    def download_report_pdf(project_id: str, run_id: str, user=Depends(limited)):
+        result = report(project_id, run_id, user)
+        if not Path(FONT_PATH).is_file():
+            raise HTTPException(503, "PDF export requires an installed DejaVu Sans font.")
+        if len(result["markdown"]) > MAX_REPORT_CHARS:
+            raise HTTPException(413, "This report exceeds the PDF export limit. Download Markdown instead.")
+        if not PDF_EXPORT_SLOTS.acquire(blocking=False):
+            raise HTTPException(503, "PDF export is busy. Try again shortly.")
+        try:
+            content = render_report(result["markdown"])
+        finally:
+            PDF_EXPORT_SLOTS.release()
+        return Response(content, media_type="application/pdf",
+                        headers={"Content-Disposition": 'attachment; filename="ares-report.pdf"'})
+
+    @app.post("/projects/{project_id}/sources/pdf", status_code=201)
+    async def upload_pdf(project_id: str, request: Request,
+                         license_status: str = Query(min_length=1, max_length=200),
+                         title: str = Query(default="", max_length=500),
+                         study_id: str = Query(default="", max_length=500), user=Depends(limited)):
+        def save_pdf(raw):
+            with storage.connect() as db:
+                storage.authorize(db, project_id, user, write=True)
+            if request.headers.get("content-type", "").split(";")[0].lower() != "application/pdf":
+                raise HTTPException(415, "Send an application/pdf document.")
+            if not license_status.strip():
+                raise HTTPException(422, "Provide a license or permission statement.")
+            try:
+                data = parse_pdf(raw, license_status.strip(), title.strip(), study_id.strip())
+            except DocumentError as exc:
+                raise HTTPException(422, str(exc)) from exc
+            except DocumentUnavailable as exc:
+                raise HTTPException(503, str(exc)) from exc
+            with storage.connect() as db:
+                storage.authorize(db, project_id, user, write=True)
+                source = storage.add_source(db, project_id, data, user)
+            return {"id": source["id"], "origin": data["origin"], "page_count": data["document"]["page_count"],
+                    "blank_pages": data["document"]["blank_pages"]}
+
+        return await run_in_threadpool(save_pdf, await request.body())
     @app.post("/projects/{project_id}/sources", status_code=201)
     def source(project_id: str, body: SourceInput, user=Depends(limited)):
         with storage.connect() as db:
@@ -349,6 +393,16 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             row=db.execute("SELECT d.metadata FROM documents d JOIN sources s ON s.id=d.source_id WHERE s.project_id=? AND s.id=?",(project_id,source_id)).fetchone()
             if not row:raise HTTPException(404,"Original structured document not available")
             return json.loads(row['metadata'])
+    @app.get("/projects/{project_id}/sources/{source_id}/original.pdf")
+    def download_source_pdf(project_id: str, source_id: str, user=Depends(limited)):
+        document = original_document(project_id, source_id, user)
+        if document.get("original_format") != "pdf":
+            raise HTTPException(404, "Original PDF not available")
+        content = base64.b64decode(document["original_content_base64"], validate=True)
+        if hashlib.sha256(content).hexdigest() != document["original_sha256"]:
+            raise HTTPException(409, "Stored PDF integrity check failed")
+        return Response(content, media_type="application/pdf",
+                        headers={"Content-Disposition": 'attachment; filename="ares-source.pdf"'})
     @app.get("/projects/{project_id}/retrieve")
     def retrieve(project_id: str, q: str = Query(min_length=3,max_length=2000), user=Depends(limited)):
         with storage.connect() as db:

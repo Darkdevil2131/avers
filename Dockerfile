@@ -10,6 +10,9 @@ FROM python:3.12-slim
 ARG ARES_BUILD_REVISION=unknown
 ENV ARES_BUILD_REVISION=$ARES_BUILD_REVISION
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    poppler-utils tesseract-ocr-eng util-linux fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
 COPY requirements.lock ./
 RUN pip install --no-cache-dir -r requirements.lock && useradd --uid 10001 --create-home ares
 COPY ares/ ./ares/
