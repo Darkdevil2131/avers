@@ -203,6 +203,11 @@ class ResearchEngine:
                               citation["quote"], "", citation["url"],
                               f"Source SHA-256 {citation['digest']}", ""]
                 lines += ["## Extracted candidate findings", ""]+[f"- [{f['citation']}] {f['statement']}" for f in findings]
+                for finding in findings:
+                    for field, value in finding['reported_exposure'].items():
+                        label = field.replace('_', ' ')
+                        lines += [f"- [{finding['citation']}] Reported {label}: {value['quote']} "
+                                  f"(characters {value['start_offset']}–{value['end_offset']})."]
                 lines += ["## Review decision", "",criticism["reason"], ""]
                 lines += ["## Limitations", ""] + [f"- {x}" for x in report["limitations"]]
                 db.execute("INSERT OR IGNORE INTO reports VALUES(?,?,?,?)",

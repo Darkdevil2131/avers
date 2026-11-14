@@ -19,6 +19,12 @@ def export_markdown(saved, payload, changed):
         if pair.get('left_statement'):lines += [pair['left_statement']]
         if pair.get('right_statement'):lines += [pair['right_statement']]
         if pair.get('same_study_identifier'):lines += ['Both citations share a study identifier; do not count them as independent studies.']
+        for comparison in pair.get('reported_exposure_comparison', []):
+            field = comparison['field'].replace('_', ' ')
+            first, second = comparison['left'], comparison['right']
+            lines += [f"- Reported {field} {comparison['state']}: "
+                      f"{first['quote']} (characters {first['start_offset']}–{first['end_offset']}) "
+                      f"vs. {second['quote']} (characters {second['start_offset']}–{second['end_offset']})."]
         context = pair.get('reviewed_context')
         if context:
             lines += [f"Reviewed context: {context['state']}. {context['reason']}"]

@@ -1,6 +1,7 @@
 import re
 from collections import Counter
 from .evidence import compare_reviewed_findings
+from .exposure import compare_exposure, extract_exposure
 from .text_spans import sentence_spans
 WORDS=re.compile(r'[A-Za-z][A-Za-z-]{2,}')
 STOP=set('the and with from that this were was are for not but study studies results effect effects'.split())
@@ -49,7 +50,10 @@ def extract(citations,question):
     except (ImportError,OSError,ValueError,RuntimeError):
         findings=[f for f in findings if DIRECTION.search(f['statement'])]
     # Keep a small review queue; scores measure relevance, never entailment/truth.
-    return findings[:3]
+    selected = findings[:3]
+    for finding in selected:
+        finding['reported_exposure'] = extract_exposure(finding['statement'], finding['start_offset'])
+    return selected
 
 def critique(findings,citations,reviewed_contexts=None):
     pairs=[]
@@ -74,6 +78,7 @@ def critique(findings,citations,reviewed_contexts=None):
                               'signal':'opposing_direction' if opposing else 'different_negation',
                               'same_study_identifier':same_study,
                               'reviewed_context':context,
+                              'reported_exposure_comparison':compare_exposure(left, right),
                               'review_questions':['Do both findings measure the same outcome with compatible units?',
                                                   'Do population or material, exposure, comparator and timeframe match?',
                                                   'Do uncertainty intervals and study designs justify comparing the effects?',
