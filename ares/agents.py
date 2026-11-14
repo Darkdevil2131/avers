@@ -52,16 +52,30 @@ def extract(citations,question):
 
 def critique(findings,citations):
     pairs=[]
+    sources={c['label']:c for c in citations}
     for index,left in enumerate(findings):
         for right in findings[index+1:]:
             if left['source_id']==right['source_id']:continue
             a,b=terms(left['statement']),terms(right['statement'])
             overlap=len(a&b)/max(1,len(a|b))
             negative=lambda s:bool(re.search(r'\b(no significant|not associated|did not|no effect)\b',s,re.I))
-            if overlap>=.35 and negative(left['statement'])!=negative(right['statement']):
+            direction=proposal_critic({'statement':left['statement'],'basis_quote':right['statement']})['direction_check']
+            opposing=direction['status']=='potential_opposition'
+            negated=negative(left['statement'])!=negative(right['statement'])
+            if overlap>=.35 and (opposing or negated):
+                left_source=sources.get(left['citation'],{})
+                right_source=sources.get(right['citation'],{})
+                same_study=bool(left_source.get('study_id') and left_source.get('study_id')==right_source.get('study_id'))
                 pairs.append({'left':left['citation'],'right':right['citation'],'state':'potential_disagreement',
-                              'reason':'Related wording with different negation; context is not verified',
-                              'automatic_verdict':False})
+                              'reason':('Related wording with opposing direction words' if opposing else 'Related wording with different negation')+'; context is not verified',
+                              'left_statement':left['statement'],'right_statement':right['statement'],
+                              'signal':'opposing_direction' if opposing else 'different_negation',
+                              'same_study_identifier':same_study,
+                              'review_questions':['Do both findings measure the same outcome with compatible units?',
+                                                  'Do population or material, exposure, comparator and timeframe match?',
+                                                  'Do uncertainty intervals and study designs justify comparing the effects?',
+                                                  'Are these independent studies or multiple reports of the same study?'],
+                              'context_verified':False,'automatic_verdict':False})
     groups={}
     for c in citations:groups.setdefault(c.get('study_id') or c['url'],[]).append(c['label'])
     return {'potential_disagreements':pairs[:12],'study_identifier_groups':list(groups.values()),
