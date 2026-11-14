@@ -60,6 +60,12 @@ def export_markdown(saved, payload, changed, review_links_changed=False):
                   'Basis quote: '+proposal.get('basis_quote','not recorded'),
                   'Mechanism: '+proposal.get('mechanism','not established'),
                   'Falsification: '+proposal.get('falsification','not established')]
+        screen = proposal.get('prior_art')
+        if screen:
+            lines += [f"Literature title screen: {screen['status'].replace('_', ' ')}.",
+                      screen['scope'], 'Novelty remains unverified.']
+            for match in screen['matches']:
+                lines += [f"- {match['title']} · {match['url']}"]
         experiment = proposal.get('experiment_plan')
         if experiment:
             lines += ['Experiment proposal: ' + experiment['design']]

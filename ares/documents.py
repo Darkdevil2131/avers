@@ -5,12 +5,58 @@ from defusedxml import ElementTree as ET
 
 ALLOWED_LICENSE = re.compile(r'https?://creativecommons.org/(?:licenses/(?:by|by-sa)/[134]\.0|publicdomain/zero/1\.0)/?$', re.I)
 
+
+def _text(node):
+    return ' '.join(''.join(node.itertext()).split()) if node is not None else ''
+
+
+def _jats_tables(parts):
+    """Preserve physical rows and span attributes for explicit JATS HTML-style tables."""
+    tables = []
+    cells_left = 2000
+    for part in parts:
+        for wrapper in part.iter('table-wrap'):
+            table = wrapper.find('table')
+            if table is None:
+                continue
+            rows = []
+            for row in table.findall('tr') + [
+                row for group in table if group.tag in {'thead', 'tbody', 'tfoot'}
+                for row in group.findall('tr')
+            ]:
+                if cells_left <= 0:
+                    break
+                cells = []
+                for cell in row:
+                    if cell.tag not in {'td', 'th'}:
+                        continue
+                    if cells_left <= 0:
+                        break
+                    value = _text(cell)
+                    cells.append({
+                        'text': value[:2000], 'text_truncated': len(value) > 2000,
+                        'header': cell.tag == 'th',
+                        'rowspan': cell.get('rowspan', '1')[:20],
+                        'colspan': cell.get('colspan', '1')[:20],
+                    })
+                    cells_left -= 1
+                if cells:
+                    rows.append(cells)
+            if rows:
+                tables.append({
+                    'id': wrapper.get('id'), 'label': _text(wrapper.find('label'))[:200],
+                    'caption': _text(wrapper.find('caption'))[:2000], 'rows': rows,
+                })
+            if len(tables) >= 20 or cells_left <= 0:
+                return tables, True
+    return tables, False
+
+
 def parse_jats(raw: bytes, pmcid: str):
     if len(raw)>4_000_000:
         raise ValueError('XML exceeds 4 MB budget')
     root=ET.fromstring(raw, forbid_dtd=True, forbid_entities=True, forbid_external=True)
-    def text(node):
-        return ' '.join(''.join(node.itertext()).split()) if node is not None else ''
+    text = _text
     licenses=root.findall('.//permissions/license')
     links=[v for node in licenses for descendant in node.iter() for k,v in descendant.attrib.items() if k.endswith('href')]
     license_url=next((x for x in links if ALLOWED_LICENSE.fullmatch(x)),None)
@@ -19,7 +65,8 @@ def parse_jats(raw: bytes, pmcid: str):
     title=text(root.find('.//article-title'))
     chunks=[];locations=[];offset=0
     # Preserve normalized section text with location paths; original XML hash accompanies it.
-    for part in root.findall('.//abstract')+root.findall('./body'):
+    parts = root.findall('.//abstract') + root.findall('./body')
+    for part in parts:
         for node in part.iter():
             if node.tag not in {'p','table-wrap'}:continue
             value=text(node)
@@ -32,9 +79,11 @@ def parse_jats(raw: bytes, pmcid: str):
     refs=[]
     for node in root.findall('.//ref//pub-id'):
         if node.get('pub-id-type')=='pmcid' and re.fullmatch(r'PMC\d+',text(node)):refs.append(text(node))
+    tables, tables_bounded = _jats_tables(parts)
     return {'title':title,'text':'\n\n'.join(chunks),'url':f'https://europepmc.org/articles/{pmcid}',
             'study_id':doi or pmcid,'license_status':license_url,'origin':'europepmc_fulltext',
-            'document':{'original_sha256':hashlib.sha256(raw).hexdigest(),'original_xml_base64':base64.b64encode(raw).decode('ascii'),'locations':locations,'references':list(dict.fromkeys(refs))[:20], 'license':license_url}}
+            'document':{'original_sha256':hashlib.sha256(raw).hexdigest(),'original_xml_base64':base64.b64encode(raw).decode('ascii'),'locations':locations,'references':list(dict.fromkeys(refs))[:20], 'license':license_url,
+                        'tables': tables, 'tables_bounded': tables_bounded}}
 
 def parse_bioc(raw: bytes, pmcid: str):
     import json

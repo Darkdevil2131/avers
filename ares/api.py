@@ -19,6 +19,7 @@ from .providers import EuropePMC
 from .pdf_documents import DocumentError, DocumentUnavailable, parse_pdf
 from .pdf_export import FONT_PATH, MAX_REPORT_CHARS, PDF_EXPORT_SLOTS, render_report
 from .research import ResearchEngine
+from .replay import FORMAT as REPLAY_FORMAT, MAX_BUNDLE_BYTES, MAX_SOURCE_BYTES, replay_markdown, source_references
 from .retrieval import hybrid_search
 from .security import BodyLimit, IngressLimit, RateLimit
 from .tools import CAPABILITIES, execute
@@ -242,6 +243,36 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
     def download_report_json(project_id: str, run_id: str, user=Depends(authenticate)):
         result = report(project_id, run_id, user)
         return JSONResponse(result, headers={"Content-Disposition": 'attachment; filename="ares-report.json"'})
+    @app.get("/projects/{project_id}/runs/{run_id}/replay.json")
+    def download_replay_bundle(project_id: str, run_id: str, user=Depends(limited)):
+        with storage.connect() as db:
+            storage.authorize(db, project_id, user)
+            require_run(db, project_id, run_id)
+            row = db.execute("SELECT payload,markdown FROM reports WHERE run_id=?", (run_id,)).fetchone()
+            if row is None:
+                raise HTTPException(409, "Report is not ready")
+            saved_report = json.loads(row["payload"])
+            ids = {item["source_id"] for item in source_references(saved_report)}
+            sources, size = {}, 0
+            for source_id in sorted(ids):
+                source = db.execute("SELECT text,digest FROM sources WHERE project_id=? AND id=?",
+                                    (project_id, source_id)).fetchone()
+                if source is None:
+                    raise HTTPException(409, "An archived source is unavailable")
+                size += len(source["text"].encode())
+                if size > MAX_SOURCE_BYTES:
+                    raise HTTPException(413, "Cited source snapshots exceed the replay size limit.")
+                sources[source_id] = dict(source)
+        bundle = {"format": REPLAY_FORMAT, "report": saved_report, "saved_markdown": row["markdown"],
+                  "sources": sources}
+        try:
+            replay_markdown(bundle)
+        except (KeyError, ValueError) as exc:
+            raise HTTPException(409, "Saved report did not pass replay verification") from exc
+        response = JSONResponse(bundle, headers={"Content-Disposition": 'attachment; filename="ares-replay.json"'})
+        if len(response.body) > MAX_BUNDLE_BYTES:
+            raise HTTPException(413, "Encoded replay bundle exceeds the size limit.")
+        return response
     @app.get("/projects/{project_id}/runs/{run_id}/report.pdf")
     def download_report_pdf(project_id: str, run_id: str, user=Depends(limited)):
         result = report(project_id, run_id, user)

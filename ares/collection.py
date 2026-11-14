@@ -55,6 +55,7 @@ class EvidenceCollector:
             'scope': 'Bounded literature collection; absence of results is not evidence against a hypothesis.',
         }
         self.urls = set()
+        self.records = []
         self.seen = set()
         self.references = []
 
@@ -85,6 +86,7 @@ class EvidenceCollector:
                 fresh.append(record)
         if fresh:
             self.store_sources(fresh)
+            self.records.extend(fresh)
         self.audit['metadata_records'] = len(self.urls)
         if search_succeeded:
             self.event('external_search_completed', {'provider': 'Europe PMC', 'count': len(fresh),

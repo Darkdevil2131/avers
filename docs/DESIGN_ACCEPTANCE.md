@@ -10,14 +10,29 @@ Use **Add a source → Upload a PDF** to attach a document you have permission t
 | --- | --- | --- |
 | Executive and domain agents (pp. 8–12) | The planner can broaden thin retrieval or search for counterevidence after opposing findings. Reports preserve its decisions and before/after candidate coverage. | Domain-specific task routing and falsification, independent comparisons with a static planner |
 | RAG and source acquisition (pp. 12–13) | Lexical and dense retrieval, reranking, fixed Europe PMC/NCBI endpoints and license checks | Broader domain sources, scalable vector indexing, connector drift tests and measured coverage under a fixed budget |
-| Document intelligence and provenance (pp. 12–15) | PDF text extraction, bounded English OCR, page-linked citations, original document and report downloads | Validated table and equation structure, multilingual OCR, and stronger parser isolation |
+| Document intelligence and provenance (pp. 12–15) | PDF text extraction, bounded English OCR, page-linked citations, original document and report downloads, and structured rows from explicit HTML-style JATS tables | Validated structure for PDF tables, equations and scanned tables, multilingual OCR, and stronger parser isolation |
 | Evidence assessment and independence (pp. 13–16, 20–22) | Claim-linked runs snapshot reviewer-entered support or opposition with exact spans, exclusions, and study identifier groups. The critic also compares reviewed fields and explicit exposure values. | Expert-labeled context and stance validation, study-quality appraisal, underlying study/dataset/cohort identity and correction feeds |
-| Reasoning, hypotheses and experiments (pp. 9–15) | Descriptive statistics, unit conversion, versioned proposals, review flags and a controlled comparison template for coating exposures | Capability-aware routing, validated statistics/causal/graph tools, prior-art search, broader domain experiment plans and expert review |
+| Reasoning, hypotheses and experiments (pp. 9–15) | Descriptive statistics, unit conversion, versioned proposals, review flags, title overlap screening of retrieved literature, and a controlled comparison template for coating exposures | Dedicated prior-art searches and expert novelty and experiment review, capability-aware routing, validated statistics/causal/graph tools, broader domain experiment plans |
 | Security and data (pp. 15–17, 20–22) | Authenticated project access, database row-level policies, source/run snapshots and disposable backup restoration | Production threat review, dependency checks, least-privilege worker review, production backup recovery and observability |
-| Memory and reproducibility (pp. 2, 11, 17) | Pending memory, reviewed relevance feedback, recorded queries and report events, portable JSON reports with planner policy and build revision when supplied | Frozen-corpus replay and artifact versions, validation of feedback impact, poisoning evaluation and reproducible offline training if added |
+| Memory and reproducibility (pp. 2, 11, 17) | Pending memory, reviewed relevance feedback, recorded queries, and offline Markdown reconstruction from immutable reports with verified cited source snapshots | Frozen-corpus retrieval and inference replay, model artifact versions, validation of feedback impact, poisoning evaluation and reproducible offline training if added |
 | Interface (pp. 18–19) | React workflow view driven by recorded events, 3D collection/retrieval states and reduced-motion fallback | Desktop/mobile browser acceptance, full event-to-visual coverage and accessibility checks |
 | Infrastructure and cost (pp. 22–24) | Container build and disposable PostgreSQL workflow checks | Verified live revision, no-trial hosting at ₹0 additional spend, durable storage, resource and inference-load measurements |
 | Scientific and publication gates (pp. 24–28) | Small development-set retrieval/extraction comparisons and synthetic software regressions | Frozen materials-science test set, independent labels, baseline comparisons, ablations, error/abstention reporting and expert review |
+
+## Literature screening, table export and historical replay
+
+**Download replay bundle** saves the historical report, its cited source text,
+and recorded settings. Treat it as private research data. Run
+`python -m ares.replay ares-replay.json restored-report.md` to verify source
+hashes and spans and reconstruct the saved Markdown offline. The ordinary report
+download adds current retraction and review notices. The historical reconstruction
+does not rerun search, ranking, or model inference.
+
+Proposal reports show possible title overlap within this run's retrieved
+literature. The screen uses no extra provider calls, keeps private proposal
+wording local, and does not determine novelty. Newly collected Europe PMC JATS
+records expose bounded rows, header flags and supplied span attributes through
+**Download structured source**. Previously stored document snapshots are unchanged.
 
 ## Reviewed study context in automated reports
 
