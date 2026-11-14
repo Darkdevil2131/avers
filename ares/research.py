@@ -4,7 +4,7 @@ from .database import now
 from .evidence import reviewed_finding_contexts
 from .providers import ProviderError
 from .retrieval import hybrid_search
-from .agents import plan, extract, critique, propose, proposal_critic
+from .agents import plan, extract, critique, propose, propose_exposure_test, proposal_critic
 from uuid import uuid4
 from .local_reasoner import suggest
 STAGES = (
@@ -153,6 +153,9 @@ class ResearchEngine:
                 if check['accepted_as_candidate']:
                     proposals.append(dict(candidate,consistency_check=check))
                 else:rejected.append({'candidate':candidate,'check':check})
+            exposure_proposal = propose_exposure_test(findings, criticism)
+            if exposure_proposal:
+                proposals.append(exposure_proposal)
             if not proposals:proposals=propose(findings,run["question"])
             criticism['rejected_proposals']=rejected
             with dbs.connect() as db:
@@ -168,7 +171,10 @@ class ResearchEngine:
                 dbs.event(db,run_id,"reasoner_completed",{k:v for k,v in inference.items() if k!='proposals'})
                 dbs.event(db,run_id,"extract",{"candidate_claims":len(findings),"methods":sorted({finding["method"] for finding in findings})})
                 dbs.event(db,run_id,"critic",criticism)
-                dbs.event(db,run_id,"hypothesize",{"proposals":len(proposals),"type":"model candidates" if inference["status"]=="completed" else "replication candidates"})
+                proposal_kinds = sorted({proposal['kind'] for proposal in proposals})
+                dbs.event(db, run_id, "hypothesize", {
+                    "proposals": len(proposals), "type": "follow-up candidates", "kinds": proposal_kinds,
+                })
                 report = {
                     "run_id": run_id, "question": run["question"], "retrieval":retrieval, "collection": collection,
                     "reasoner":{k:v for k,v in inference.items() if k!="proposals"},"findings":findings,"critique":criticism,"hypotheses":proposals,"plan":plan(run["question"]),

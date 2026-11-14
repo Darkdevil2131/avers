@@ -13,6 +13,26 @@ const bases = {
   direction_not_established: 'Direction could not be established',
 };
 
+export function ExperimentPlan({plan, evidence}) {
+  if (!plan) return null;
+  const contrast = plan.contrast;
+  return <details open={Boolean(contrast)}>
+    <summary>Proposed comparison and review inputs</summary>
+    <p>{plan.design}</p>
+    {contrast && <p>{contrast.field.replaceAll('_', ' ')}: {contrast.left.quote} vs. {contrast.right.quote}</p>}
+    {plan.matching_reported_conditions?.map(item => <p key={item.field}>
+      Reported {item.field.replaceAll('_', ' ')} matches: {item.left.quote} and {item.right.quote}
+    </p>)}
+    {plan.controls && <p>{plan.controls}</p>}
+    {evidence?.map(item => <blockquote key={item.citation + ':' + item.start_offset}>
+      {item.statement}
+      <cite> · [{item.citation}] Characters {item.start_offset}–{item.end_offset}</cite>
+    </blockquote>)}
+    <ul>{plan.required_inputs.map(input => <li key={input}>{input}</li>)}</ul>
+    {plan.reason && <p>Sample size pending. {plan.reason}</p>}
+  </details>;
+}
+
 export default function ProposalReview({check}) {
   const direction = check?.direction_check;
   return <aside aria-label="Proposal review limits">

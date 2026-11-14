@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import Scene from './Scene';
 import Evidence from './Evidence';
 import Memory from './Memory';
-import ProposalReview from './ProposalReview';
+import ProposalReview, {ExperimentPlan} from './ProposalReview';
 import Workflow from './Workflow';
 import BuildInfo from './BuildInfo';
 import DisagreementReview, {ReportedExposure} from './DisagreementReview';
@@ -229,7 +229,7 @@ export function App() {
                 </section>}
                 {report.findings?.length > 0 && <section><h3>Extracted candidate findings</h3><p>Exact source statements. Scientific meaning and study context still require review.</p>{report.findings.map((f,i)=><article className="citation" key={i}><span>{f.citation} · {f.method}</span><blockquote>{f.statement}</blockquote><p>Measurements found: {f.measurements.join(', ')||'none'}</p><ReportedExposure values={f.reported_exposure}/></article>)}</section>}
                 {report.critique && <details><summary>Evidence critic decision</summary><p>{report.critique.reason}</p>{report.critique.missing_checks.map(x=><p key={x}>{x}</p>)}{report.critique.potential_disagreements.map((pair,i)=><DisagreementReview key={i} pair={pair}/>)}{report.critique.rejected_proposals?.map((r,i)=><p key={'rejected'+i}>Rejected model proposal: {r.check.reasons.join('; ')}</p>)}</details>}
-                {report.hypotheses?.map((h,i)=><article className="citation" key={'h'+i}><h3>Follow-up proposal · requires review</h3><p>{h.statement}</p><blockquote>{h.basis_quote}</blockquote><p>{h.mechanism}</p><p>Falsification: {h.falsification}</p><ProposalReview check={h.consistency_check}/><p>No experiment has been executed. Novelty has not been established.</p></article>)}
+                {report.hypotheses?.map((h,i)=><article className="citation" key={'h'+i}><h3>Follow-up proposal · requires review</h3><p>{h.statement}</p>{!h.evidence_refs?.length && <blockquote>{h.basis_quote}</blockquote>}<p>{h.mechanism}</p><p>Falsification: {h.falsification}</p><ExperimentPlan plan={h.experiment_plan} evidence={h.evidence_refs}/>{h.kind !== 'exposure_comparison_candidate' && <ProposalReview check={h.consistency_check}/>}<p>No experiment has been executed. Novelty has not been established.</p></article>)}
                 {report.citations.map(citation => <article className="citation" key={citation.label}>
                   <div className="citation-heading"><span className="citation-label">{citation.label}</span><span>{citation.origin.endsWith('_metadata') ? 'Bibliographic metadata' : citation.origin.endsWith('_fulltext') ? 'Licensed full-text passage' : 'Source passage'}</span></div>
                   <h4>{citation.title}</h4><blockquote>{citation.quote}</blockquote>
