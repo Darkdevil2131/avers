@@ -39,6 +39,10 @@ export function PriorArt({screen}) {
     <summary>Literature title screen</summary>
     <p>{screen.status.replaceAll('_', ' ')}. Novelty remains unverified.</p>
     <p>{screen.scope}</p>
+    {screen.topic_search && <>
+      <p>Topic search: {screen.topic_search.status.replaceAll('_', ' ')}.</p>
+      {screen.topic_search.query && <p>{screen.topic_search.query} · {screen.topic_search.records} bibliographic titles returned</p>}
+    </>}
     <ul>{screen.matches.map((item, index) => <li key={index}>
       {/^(https?):\/\//i.test(item.url)
         ? <a href={item.url} target="_blank" rel="noreferrer">{item.title}</a> : item.title}

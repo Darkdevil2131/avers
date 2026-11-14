@@ -27,7 +27,10 @@ class EuropePMC:
         self.cache = {}
         self.opener = urllib.request.build_opener(NoRedirect())
 
-    def search(self, query, limit=8):
+    def search_titles(self, query):
+        return self.search(query, require_titles=True)
+
+    def search(self, query, limit=8, *, require_titles=False):
         if not isinstance(query, str) or not query.strip() or len(query) > 2000:
             raise ProviderError("Search query must contain 1–2000 characters")
         if type(limit) is not int or not 1 <= limit <= 10:
@@ -52,7 +55,9 @@ class EuropePMC:
                 records = json.loads(raw)["resultList"]["result"]
                 if not isinstance(records, list) or any(not isinstance(r, dict) for r in records):
                     raise ValueError("Invalid search result structure")
-            except (urllib.error.URLError, TimeoutError, ValueError, KeyError, TypeError, ProviderError):
+            except (urllib.error.URLError, TimeoutError, ValueError, KeyError, TypeError, ProviderError) as exc:
+                if require_titles:
+                    raise ProviderError('Europe PMC title search is unavailable') from exc
                 return self.ncbi_search(query,limit)
             results = []
             for record in records[:limit]:

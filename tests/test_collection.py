@@ -23,6 +23,9 @@ def test_bad_search_schema_uses_approved_fallback(monkeypatch, records):
     monkeypatch.setattr(provider, 'ncbi_search', lambda q, n: calls.append((q,n)) or [])
     assert provider.search('coating') == []
     assert calls == [('coating',8)]
+    with pytest.raises(ProviderError, match='title search is unavailable'):
+        provider.search_titles('coating')
+    assert calls == [('coating',8)]
 
 
 def test_cached_results_are_not_mutated_by_broadened_search():
@@ -147,6 +150,7 @@ def test_follow_up_uses_retrieved_evidence_and_keeps_request_budget(
     assert provider.fetches == ['PMC1', 'PMC2', 'PMC3', 'PMC4']
     assert audit['fulltext_attempted'] == 4 and audit['bounded']
     assert audit['queries'][1]['strategy'] == expected_strategy
+    assert audit['prior_art_search']['status'] == 'budget_exhausted'
     assert audit['adaptation']['decision'] == expected_strategy
     assert audit['adaptation']['before']['candidate_study_ids'] == (2 if opposing else 1)
     if opposing:
@@ -171,7 +175,7 @@ def test_follow_up_uses_retrieved_evidence_and_keeps_request_budget(
         baseline_pid = project(baseline)
         baseline_rid = run(baseline, baseline_pid, external=True)
         baseline_report = baseline.get(f'/projects/{baseline_pid}/runs/{baseline_rid}/report').json()
-        assert len(baseline_provider.queries) == 1
+        assert [entry['strategy'] for entry in baseline_report['collection']['queries']] == ['primary_evidence', 'prior_art']
         assert baseline_report['collection']['adaptation']['after']['candidate_study_ids'] < (
             audit['adaptation']['after']['candidate_study_ids']
         )
