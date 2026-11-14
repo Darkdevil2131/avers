@@ -80,6 +80,8 @@ def test_retraction_excludes_new_results_and_marks_saved_report_outdated(tmp_pat
     original = source(c, pid)
     rid = run(c, pid)
     before = c.get(f"/projects/{pid}/runs/{rid}/report").json()
+    with c.app.state.storage.connect() as db:
+        stored_before = db.execute('SELECT markdown FROM reports WHERE run_id=?',(rid,)).fetchone()[0]
     assert c.post(f"/projects/{pid}/sources/{original['id']}/review", json={
         "status": "retracted", "reason": "Fixture publisher retraction notice"
     }).status_code == 200
@@ -87,6 +89,13 @@ def test_retraction_excludes_new_results_and_marks_saved_report_outdated(tmp_pat
     after = c.get(f"/projects/{pid}/runs/{rid}/report").json()
     assert after["outdated_sources"] == [original["id"]]
     assert before["citations"] == after["citations"]
+    download = c.get(f"/projects/{pid}/runs/{rid}/report.md")
+    assert download.text == after['markdown']
+    assert download.text.startswith('> WARNING: Source reviews changed')
+    assert original['id'] in download.text
+    assert '> WARNING:' not in before['markdown']
+    with c.app.state.storage.connect() as db:
+        assert db.execute('SELECT markdown FROM reports WHERE run_id=?',(rid,)).fetchone()[0] == stored_before
     second = run(c, pid)
     assert c.get(f"/projects/{pid}/runs/{second}/report").json()["citations"] == []
 

@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
+from .report_export import export_markdown
 STOPWORDS = set("a an the is are does do of for and or to in on with how what which can this that by from".split())
 def now():
     return datetime.now(timezone.utc).isoformat()
@@ -127,4 +128,4 @@ class Database:
                                  (citation["source_id"],)).fetchone()[0]
             if version != citation["review_version"]:
                 changed.append(citation["source_id"])
-        return {**payload, "markdown": row["markdown"], "outdated_sources": sorted(set(changed))}
+        return {**payload, "markdown": export_markdown(row["markdown"], payload, changed), "outdated_sources": sorted(set(changed))}
