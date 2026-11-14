@@ -1,10 +1,17 @@
 from test_research import client, project, source
+from ares.evidence import compare_context
 CONTEXT = {
     "subject": "coating", "variable": "humidity", "units": "% RH",
     "population_or_material": "material A", "conditions": "25 C",
     "study_design": "bench experiment", "outcome": "retained strength",
     "measurement": "tensile test", "timeframe": "7 days",
 }
+
+
+def test_comparison_preserves_case_of_scientific_unit_symbols():
+    assert compare_context({**CONTEXT, 'units': 'MPa'}, {**CONTEXT, 'units': 'mPa'}) == {
+        'state': 'context-mismatched', 'fields': ['units'],
+    }
 def test_contextual_evidence_retraction_and_study_grouping(tmp_path):
     c = client(tmp_path)
     pid = project(c)

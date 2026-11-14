@@ -19,6 +19,13 @@ def export_markdown(saved, payload, changed):
         if pair.get('left_statement'):lines += [pair['left_statement']]
         if pair.get('right_statement'):lines += [pair['right_statement']]
         if pair.get('same_study_identifier'):lines += ['Both citations share a study identifier; do not count them as independent studies.']
+        context = pair.get('reviewed_context')
+        if context:
+            lines += [f"Reviewed context: {context['state']}. {context['reason']}"]
+            if context['fields']:
+                lines += ['Context fields: ' + ', '.join(context['fields'])]
+            if context['review_ids']:
+                lines += ['Evidence review IDs: ' + ', '.join(context['review_ids'])]
         lines += ['- '+question for question in pair.get('review_questions',[])]
     for item in (payload.get('critique') or {}).get('rejected_proposals',[]):
         lines += ['', '### Rejected model proposal', item['candidate'].get('statement','Statement not recorded')]

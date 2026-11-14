@@ -1,6 +1,8 @@
 """Synthetic review-routing cases, not scientific accuracy evaluation."""
 from ares.agents import critique
 from ares.report_export import export_markdown
+from test_evidence import CONTEXT
+from test_research import client, project, run
 
 
 def review(left,right,same_study=False,same_source=False):
@@ -50,3 +52,63 @@ def test_existing_negation_signal_still_requires_review():
 def test_same_source_is_not_called_cross_source_disagreement():
     assert review('Coating adhesion increased after humidity exposure.',
                   'Coating adhesion decreased after humidity exposure.',same_source=True)['potential_disagreements']==[]
+
+
+def test_report_uses_exact_reviews_to_distinguish_context_mismatch(tmp_path):
+    check_report_context(client(tmp_path))
+
+
+def check_report_context(api):
+    project_id = project(api)
+    prefix = f'/projects/{project_id}'
+    observations = [
+        'Coating stability increased after exposure to humidity during the controlled test.',
+        'Coating stability decreased after exposure to humidity during the controlled test.',
+    ]
+    sources = []
+    for i, observation in enumerate(observations):
+        response = api.post(f'{prefix}/sources', json={
+            'url': f'https://example.org/coating-{i}', 'title': f'Coating test {i}',
+            'text': observation, 'license_status': 'Synthetic fixture',
+        })
+        assert response.status_code == 201
+        sources.append(response.json()['id'])
+
+    claim = api.post(f'{prefix}/claims', json={
+        'statement': 'Humidity affects coating stability.', 'fingerprint': CONTEXT,
+    }).json()['id']
+
+    def link(index, fingerprint, start=0):
+        response = api.post(f'{prefix}/claims/{claim}/evidence', json={
+            'source_id': sources[index], 'start_offset': start, 'end_offset': len(observations[index]),
+            'stance': 'neutral', 'fingerprint': fingerprint, 'rationale': 'Synthetic reviewed context',
+        })
+        assert response.status_code == 201
+
+    def get_pair():
+        report_route = f'{prefix}/runs/{run(api, project_id)}/report'
+        response = api.get(report_route)
+        assert response.status_code == 200
+        report = response.json()
+        assert report['assessment'] == 'inconclusive'
+        pair = report['critique']['potential_disagreements'][0]
+        assert pair['automatic_verdict'] is False
+        return pair['reviewed_context'], report_route
+
+    link(0, CONTEXT)
+    link(1, CONTEXT, start=1)
+    context, _ = get_pair()
+    assert context['state'] == 'unverified' and context['review_ids'] == []
+
+    link(1, {**CONTEXT, 'units': 'mpa', 'conditions': '90 C'})
+    context, route = get_pair()
+    assert context['state'] == 'context-mismatched'
+    assert context['fields'] == ['units', 'conditions']
+    assert context['claim_ids'] == [claim] and len(context['review_ids']) == 2
+    assert 'Reviewed context: context-mismatched.' in api.get(route + '.md').text
+
+    link(1, CONTEXT)
+    context, _ = get_pair()
+    assert context['state'] == 'review-conflict'
+    assert len(context['review_ids']) == 3
+    assert api.get(route).json()['critique']['potential_disagreements'][0]['reviewed_context']['state'] == 'context-mismatched'

@@ -1,6 +1,7 @@
 import json
 import time
 from .database import now
+from .evidence import reviewed_finding_contexts
 from .providers import ProviderError
 from .retrieval import hybrid_search
 from .agents import plan, extract, critique, propose, proposal_critic
@@ -140,9 +141,10 @@ class ResearchEngine:
                 dbs.event(db, run_id, "audit", {"exact_spans_checked": len(citations), "tool":"citation_audit",
                           "scientific_support": "unverified"})
             findings=extract(citations,run["question"])
-            criticism=critique(findings,citations)
             with dbs.connect() as db:
+                contexts = reviewed_finding_contexts(db, run['project_id'], findings)
                 dbs.event(db,run_id,"reasoner_started",{"mode":"local model if configured","network_tools":False})
+            criticism=critique(findings,citations,contexts)
             inference=suggest(run["question"],citations) if not stopped() else {"status":"cancelled_or_budget_exhausted","proposals":[]}
             candidates=inference["proposals"]
             rejected=[];proposals=[]
