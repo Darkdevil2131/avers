@@ -20,17 +20,19 @@ def suggest(question,citations):
           input=json.dumps({'question':question[:1500],'evidence':evidence}),capture_output=True,text=True,timeout=90,env=environment)
         if output.returncode:raise ValueError('Local inference process failed')
         result=json.loads(output.stdout)
+        if not isinstance(result,dict):raise ValueError('Invalid model response envelope')
         if result.get('error'):
             message={'output_budget_exhausted':'Local model reached its output budget; incomplete proposal rejected',
                      'invalid_json':'Local model produced invalid JSON; proposal rejected'}.get(result['error'],'Local model output rejected')
             raise ValueError(message)
         data=result['proposal']
-        if set(data)!=set(SCHEMA['required']):raise ValueError('Invalid schema')
+        if not isinstance(data,dict) or set(data)!=set(SCHEMA['required']):raise ValueError('Invalid schema')
         if any(not isinstance(data[k],str) or len(data[k])>SCHEMA['properties'][k]['maxLength'] for k in ('answer','hypothesis','mechanism','falsification','citation','quote')):raise ValueError('Invalid field')
         if not isinstance(data['limitations'],list) or len(data['limitations'])>2 or not all(isinstance(x,str) and len(x)<=120 for x in data['limitations']):raise ValueError('Invalid limitations')
         source=next((c for c in citations if c['label']==data['citation']),None)
-        if source is None or len(data['quote'].strip())<20 or data['quote'] not in source['quote']:
-            raise ValueError('Generated evidence quote did not match a source')
+        supplied=next((e for e in evidence if e['citation']==data['citation']),None)
+        if source is None or supplied is None or len(data['quote'].strip())<20 or data['quote'] not in supplied['text']:
+            raise ValueError('Generated evidence quote did not match evidence supplied to the model')
         if not all(data[k].strip() for k in ('hypothesis','mechanism','falsification')):raise ValueError('Incomplete proposal')
         proposal={'kind':'model_generated_candidate','statement':data['hypothesis'],'mechanism':data['mechanism'],
                   'falsification':data['falsification'],'citation':data['citation'],'basis_quote':data['quote'],
@@ -38,8 +40,8 @@ def suggest(question,citations):
                   'status':'proposal_needs_review','novelty':'not assessed','experiment_executed':False,
                   'grounding':'quotation integrity checked; interpretation and mechanism unverified'}
         return {'status':'completed','model_sha256':result['model_sha256'],'model':Path(path).name,
-                'paid_api_calls':0,'answer':data['answer'] if data['answer'].strip() and data['answer'] in source['quote'] else None,
-                'answer_status':'exact source extract' if data['answer'].strip() and data['answer'] in source['quote'] else 'generated narrative rejected: not a nonempty exact source extract',
+                'paid_api_calls':0,'answer':data['answer'] if data['answer'].strip() and data['answer'] in supplied['text'] else None,
+                'answer_status':'exact source extract' if data['answer'].strip() and data['answer'] in supplied['text'] else 'generated narrative rejected: not a nonempty exact source extract',
                 'critic_warnings':['Model mechanisms and falsification logic have not been scientifically validated; proposals require expert review'],
                 'proposals':[proposal],'scientific_validity':'unvalidated'}
     except (subprocess.TimeoutExpired,ValueError,KeyError,TypeError) as exc:
