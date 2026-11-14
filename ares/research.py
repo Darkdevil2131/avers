@@ -1,7 +1,7 @@
 import json
 import time
 from .database import now
-from .evidence import reviewed_finding_contexts
+from .evidence import reviewed_finding_contexts, snapshot_reviewed_claim
 from .providers import ProviderError
 from .retrieval import hybrid_search
 from .agents import plan, extract, critique, propose, propose_exposure_test, proposal_critic
@@ -168,6 +168,8 @@ class ResearchEngine:
                     (run_id, claimed['attempts'], time.time())).fetchone()
                 if owned is None:
                     return False
+                reviewed_claim = snapshot_reviewed_claim(db, run["project_id"], run_id)
+                assessment = reviewed_claim["assessment"] if reviewed_claim else "inconclusive"
                 dbs.event(db,run_id,"reasoner_completed",{k:v for k,v in inference.items() if k!='proposals'})
                 dbs.event(db,run_id,"extract",{"candidate_claims":len(findings),"methods":sorted({finding["method"] for finding in findings})})
                 dbs.event(db,run_id,"critic",criticism)
@@ -178,7 +180,7 @@ class ResearchEngine:
                 report = {
                     "run_id": run_id, "question": run["question"], "retrieval":retrieval, "collection": collection,
                     "reasoner":{k:v for k,v in inference.items() if k!="proposals"},"findings":findings,"critique":criticism,"hypotheses":proposals,"plan":plan(run["question"]),
-                    "assessment": "inconclusive", "calibrated": False,
+                    "assessment": assessment, "calibrated": False,
                     "summary": inference.get("answer") or ("Extracted observations: " + " ".join(f["statement"] for f in findings[:3]) if findings else "Relevant passages were retrieved for review." if citations else "The available project sources contain no matching passages."),
                     "summary_status": "exact source extract selected by local model" if inference.get("answer") else "extractive",
                     "citations": citations,
@@ -194,8 +196,10 @@ class ResearchEngine:
                     ],
                     "created_at": now(),
                 }
+                if reviewed_claim:
+                    report["reviewed_claim"] = reviewed_claim
                 lines = ["# Research evidence report", "", run["question"], "",
-                         "Assessment — inconclusive", "", report["summary"], ""]
+                         f"Assessment — {assessment}", "", report["summary"], ""]
                 lines += ['## Source collection', '',
                           'Status: ' + collection['status'],
                           f"Metadata records: {collection['metadata_records']}; full texts stored: {collection['fulltext_stored']}; full texts attempted: {collection['fulltext_attempted']}",
@@ -219,7 +223,7 @@ class ResearchEngine:
                 db.execute("INSERT OR IGNORE INTO reports VALUES(?,?,?,?)",
                            (run_id, json.dumps(report), "\n".join(lines), now()))
                 db.execute("UPDATE run_state SET status='completed',lease_until=0,error=NULL WHERE run_id=?", (run_id,))
-                dbs.event(db, run_id, "report", {"status": "completed", "assessment": "inconclusive"})
+                dbs.event(db, run_id, "report", {"status": "completed", "assessment": assessment})
                 dbs.audit(db, run["project_id"], "research_worker", "run_completed", {"run_id": run_id})
                 db.execute("INSERT INTO research_memory VALUES(?,?,?,?,?,?,?)",(str(uuid4()),run["project_id"],run_id,json.dumps({"question":run["question"],"findings":findings,"source_ids":[c["source_id"] for c in citations]}),"pending",None,now()))
             return True

@@ -24,6 +24,7 @@ class ProjectInput(BaseModel):
 class RunInput(BaseModel):
     question: str = Field(min_length=8, max_length=2000)
     external: bool = False
+    claim_id: str | None = Field(default=None, min_length=1, max_length=64)
 class SourceInput(BaseModel):
     url: str = Field(min_length=1, max_length=2000)
     text: str = Field(min_length=1, max_length=100000)
@@ -148,13 +149,20 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
                                   (project_id, idempotency_key)).fetchone() if idempotency_key else None
             if existing:
                 old = require_run(db, project_id, existing["run_id"])
-                if old["question"] != body.question or bool(old["external"]) != body.external:
+                if (old["question"] != body.question or bool(old["external"]) != body.external
+                        or old["claim_id"] != body.claim_id):
                     raise HTTPException(409, "Idempotency key belongs to another request")
                 return old
+            if body.claim_id and not db.execute(
+                "SELECT id FROM claims WHERE id=? AND project_id=?", (body.claim_id, project_id)
+            ).fetchone():
+                raise HTTPException(404, "Claim not found")
             pending = db.execute("SELECT count(*) FROM run_state WHERE project_id=? AND cancelled=0 AND status IN ('queued','running')", (project_id,)).fetchone()[0]
             if pending >= 20:
                 raise HTTPException(429, "Project research queue is full (20 active jobs); wait for completion or cancel a job", headers={"Retry-After": "10"})
             db.execute("INSERT INTO runs VALUES(?,?,?,?)", (identifier, project_id, body.question, now()))
+            if body.claim_id:
+                db.execute("INSERT INTO run_claims VALUES(?,?,?)", (identifier, project_id, body.claim_id))
             db.execute("INSERT INTO run_state(run_id,status,external,request_key,project_id) VALUES(?,?,?,?,?)",
                        (identifier, "queued", int(body.external), idempotency_key, project_id))
             storage.event(db, identifier, "queued", {"question": body.question})
@@ -366,7 +374,7 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             for row in db.execute("SELECT * FROM research_memory WHERE project_id=? ORDER BY created_at DESC LIMIT 100",(project_id,)):
                 item=dict(row);item["content"]=json.loads(item["content"])
                 report=storage.report(db,project_id,item["run_id"])
-                item["stale"]=bool(report and report["outdated_sources"])
+                item["stale"]=bool(report and (report["outdated_sources"] or report["review_links_changed"]))
                 result.append(item)
             return result
     @app.post("/projects/{project_id}/memory/{memory_id}/review")
@@ -376,8 +384,8 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             row=db.execute("SELECT * FROM research_memory WHERE id=? AND project_id=?",(memory_id,project_id)).fetchone()
             if row is None:raise HTTPException(404,"Memory not found")
             report=storage.report(db,project_id,row["run_id"])
-            if body.status=='active' and report["outdated_sources"]:
-                raise HTTPException(409,"Source reviews changed; run research again before approving memory")
+            if body.status=='active' and (report["outdated_sources"] or report["review_links_changed"]):
+                raise HTTPException(409,"Evidence changed; run research again before approving memory")
             status='approved' if body.status=='active' else 'rejected'
             db.execute("UPDATE research_memory SET status=?,actor=? WHERE id=?",(status,user,memory_id))
             storage.audit(db,project_id,user,"memory_reviewed",{"memory_id":memory_id,"status":status,"reason":body.reason})

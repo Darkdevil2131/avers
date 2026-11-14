@@ -1,13 +1,31 @@
 """Read-time disclosures without changing the immutable saved report."""
 
 
-def export_markdown(saved, payload, changed):
+def export_markdown(saved, payload, changed, review_links_changed=False):
     lines=[]
     if changed:
         lines += ['> WARNING: Source reviews changed after this report was saved.',
                   '> This historical report may rely on retracted or excluded evidence. Run research again before relying on it.',
                   '> Affected source IDs: '+', '.join(sorted(set(changed))), '']
-    lines += [saved, '', '## Model and proposal review disclosures', '',
+    if review_links_changed:
+        lines += ['> WARNING: Reviewed evidence was added after this assessment. Run research again to include it.', '']
+    lines += [saved, '']
+    reviewed = payload.get('reviewed_claim')
+    if reviewed:
+        lines += ['## Reviewed claim assessment', '', reviewed['statement'],
+                  f"{reviewed['assessment'].capitalize()} based on reviewer-entered evidence. {reviewed['reason']}",
+                  'Study identifiers do not verify independence.']
+        for item in reviewed['evidence']:
+            eligibility = ', '.join(item['exclusions']) or 'eligible'
+            lines += ['', f"- {item['title']} ({item['stance']}, {eligibility})",
+                      item['url'], item['quote'], item['rationale'],
+                      f"Review {item['id']} · characters {item['start_offset']}–{item['end_offset']} · SHA-256 {item['digest']}"]
+            if item['quote_truncated']:
+                lines += ['Showing the first 2,000 characters of the linked span.']
+            if item['context']['fields']:
+                lines += ['Context fields: ' + ', '.join(item['context']['fields'])]
+        lines += ['']
+    lines += ['## Model and proposal review disclosures', '',
               'Exact quotations establish provenance, not scientific truth. No experiment or scientific validation is implied.', '']
     reasoner=payload.get('reasoner') or {}
     lines += ['Local reasoning status: '+reasoner.get('status','not recorded')]
