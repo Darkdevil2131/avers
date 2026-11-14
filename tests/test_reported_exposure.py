@@ -48,13 +48,15 @@ def test_conditioning_setpoints_are_not_compared_to_exposure_setpoints():
     assert compare_exposure({'reported_exposure': conditioned}, {'reported_exposure': exposed}) == []
 
 
-def test_report_compares_stated_conditions_with_exact_source_offsets(tmp_path):
+@pytest.mark.parametrize('second_duration,has_controlled_proposal', [('48 h', True), ('72 h', False)])
+def test_report_compares_stated_conditions_with_exact_source_offsets(tmp_path, monkeypatch, second_duration, has_controlled_proposal):
+    monkeypatch.delenv('ARES_REASONER_MODEL', raising=False)
     api = client(tmp_path)
     project_id = project(api)
     prefix = f'/projects/{project_id}'
     texts = {}
     for i, (direction, temperature, duration) in enumerate([
-        ('increased', '25', '2 days'), ('decreased', '40', '48 h'),
+        ('increased', '25', '2 days'), ('decreased', '40', second_duration),
     ]):
         observation = (
             f'Coating stability {direction} after humidity exposure '
@@ -78,10 +80,28 @@ def test_report_compares_stated_conditions_with_exact_source_offsets(tmp_path):
     assert pair['context_verified'] is False
     assert pair['automatic_verdict'] is False
     assert {item['field']: item['state'] for item in pair['reported_exposure_comparison']} == {
-        'temperature': 'differs', 'relative_humidity': 'matches', 'duration': 'matches',
+        'temperature': 'differs', 'relative_humidity': 'matches',
+        'duration': 'matches' if has_controlled_proposal else 'differs',
     }
     for finding in report['findings']:
         for span in finding['reported_exposure'].values():
             assert span['start_offset'] > finding['start_offset']
             assert texts[finding['source_id']][span['start_offset']:span['end_offset']] == span['quote']
-    assert 'Reported temperature differs:' in api.get(route + '.md').text
+    export = api.get(route + '.md').text
+    assert 'Reported temperature differs:' in export
+    candidate, = report['hypotheses']
+    assert candidate['experiment_executed'] is False
+    assert candidate['experiment_plan']['sample_size'] is None
+    if has_controlled_proposal:
+        assert candidate['kind'] == 'exposure_comparison_candidate'
+        plan = candidate['experiment_plan']
+        assert {plan['contrast'][side]['quote'] for side in ('left', 'right')} == {'25 °C', '40 °C'}
+        assert {item['field'] for item in plan['matching_reported_conditions']} == {'relative_humidity', 'duration'}
+        assert {reference['source_id'] for reference in candidate['evidence_refs']} == set(texts)
+        for reference in candidate['evidence_refs']:
+            text = texts[reference['source_id']]
+            assert text[reference['start_offset']:reference['end_offset']] == reference['statement']
+        assert 'Controlled two-group coating comparison' in export
+    else:
+        assert candidate['kind'] == 'replication_candidate'
+        assert 'Controlled two-group coating comparison' not in export

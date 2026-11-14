@@ -42,6 +42,24 @@ def export_markdown(saved, payload, changed):
                   'Basis quote: '+proposal.get('basis_quote','not recorded'),
                   'Mechanism: '+proposal.get('mechanism','not established'),
                   'Falsification: '+proposal.get('falsification','not established')]
+        experiment = proposal.get('experiment_plan')
+        if experiment:
+            lines += ['Experiment proposal: ' + experiment['design']]
+            contrast = experiment.get('contrast')
+            if contrast:
+                field = contrast['field'].replace('_', ' ')
+                lines += [f"Proposed contrast: {field}, {contrast['left']['quote']} vs. {contrast['right']['quote']}."]
+            for item in experiment.get('matching_reported_conditions', []):
+                field = item['field'].replace('_', ' ')
+                lines += [f"Matching reported {field}: {item['left']['quote']} and {item['right']['quote']}."]
+            if experiment.get('controls'):
+                lines += [experiment['controls']]
+            lines += ['- ' + item for item in experiment['required_inputs']]
+            if experiment.get('reason'):
+                lines += ['Sample size pending. ' + experiment['reason']]
+        for reference in proposal.get('evidence_refs', []):
+            lines += [f"- [{reference['citation']}] Characters {reference['start_offset']}–{reference['end_offset']}: "
+                      + reference['statement']]
         check=proposal.get('consistency_check') or {}
         direction=check.get('direction_check') or {}
         lines += ['Direction check: '+direction.get('status','not recorded'),

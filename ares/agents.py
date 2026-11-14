@@ -99,6 +99,68 @@ def propose(findings,question):
              'experiment_plan':{'design':'Independent replication proposal','required_inputs':['Operational definitions','Population or material','Comparator or control','Measurement protocol','Effect estimate and variance','Domain-specific safety review'],
                                 'sample_size':None,'reason':'Sample size cannot be chosen without an effect target, variance, design, and error criteria'},
              'novelty':'not assessed','status':'proposal_needs_review','experiment_executed':False}]
+
+
+def propose_exposure_test(findings, criticism):
+    """Use quoted coating observations to draft one controlled comparison for review."""
+    by_quote = {(finding['citation'], finding['statement']): finding for finding in findings}
+    pairs = criticism['potential_disagreements']
+    for pair in pairs:
+        if pair['signal'] != 'opposing_direction' or pair['same_study_identifier']:
+            continue
+        left = by_quote[(pair['left'], pair['left_statement'])]
+        right = by_quote[(pair['right'], pair['right_statement'])]
+        if not all(re.search(r'\bcoatings?\b', item['statement'], re.I) for item in (left, right)):
+            continue
+        context = pair['reviewed_context']
+        if context['state'] == 'review-conflict':
+            continue
+        required_matches = {'subject', 'variable', 'units', 'population_or_material', 'outcome', 'measurement', 'study_design'}
+        if context['state'] == 'context-mismatched' and required_matches.intersection(context['fields']):
+            continue
+        comparisons = pair['reported_exposure_comparison']
+        if len(comparisons) != 3 or comparisons[0]['left']['stage'] != 'exposure':
+            continue
+        differences = [item for item in comparisons if item['state'] == 'differs']
+        if len(differences) != 1:
+            continue
+        contrast = differences[0]
+        field = contrast['field'].replace('_', ' ')
+        references = [
+            {key: finding[key] for key in ('citation', 'source_id', 'statement', 'start_offset', 'end_offset')}
+            for finding in (left, right)
+        ]
+        return {
+            'kind': 'exposure_comparison_candidate',
+            'statement': f'Changing exposure {field} may change the measured coating response under otherwise matched conditions.',
+            'basis_quote': left['statement'],
+            'source_id': left['source_id'],
+            'citation': left['citation'],
+            'evidence_refs': references,
+            'mechanism': f'Exposure {field} is one possible explanation for the reported difference. A physical mechanism remains unspecified.',
+            'falsification': 'An adequately powered comparison whose confidence interval lies within a preregistered equivalence margin would count against a practically meaningful difference.',
+            'experiment_plan': {
+                'design': 'Controlled two-group coating comparison',
+                'contrast': contrast,
+                'matching_reported_conditions': [item for item in comparisons if item['state'] == 'matches'],
+                'controls': 'Use the same coating and substrate, hold other exposure conditions constant, and measure the same outcome with the same protocol.',
+                'required_inputs': [
+                    'Confirm the coating, substrate, exposure stage, and measured outcome in both sources.',
+                    'Confirm that the quoted values are suitable setpoints for the comparison.',
+                    'Specify the measurement protocol, independent experimental unit, and assignment method.',
+                    'Set an equivalence margin and estimate variance before choosing a sample size.',
+                    'Complete a domain-specific safety review.',
+                ],
+                'sample_size': None,
+                'reason': 'The expected variance, equivalence margin and power target are unspecified.',
+            },
+            'novelty': 'not assessed',
+            'status': 'proposal_needs_review',
+            'experiment_executed': False,
+        }
+    return None
+
+
 def proposal_critic(proposal):
     """Reject simple observable inconsistencies; passing is not scientific validation."""
     hypothesis=proposal.get('statement','').lower()
