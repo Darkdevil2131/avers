@@ -3,8 +3,12 @@ WORKDIR /build/web
 COPY web/package*.json ./
 RUN npm ci
 COPY web/ ./
+ARG ARES_BUILD_REVISION=unknown
+ENV ARES_BUILD_REVISION=$ARES_BUILD_REVISION
 RUN npm test && npm run build
 FROM python:3.12-slim
+ARG ARES_BUILD_REVISION=unknown
+ENV ARES_BUILD_REVISION=$ARES_BUILD_REVISION
 WORKDIR /app
 COPY requirements.lock ./
 RUN pip install --no-cache-dir -r requirements.lock && useradd --uid 10001 --create-home ares

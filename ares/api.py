@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import secrets
 from pathlib import Path
 from typing import Literal
@@ -101,7 +102,10 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
         return {"status": "ok", "mode": "deterministic-research", "version": "0.3.0"}
     @app.get("/session")
     def session(user=Depends(authenticate)):
-        return {"username": user, "mode": "local-model-assisted" if os.environ.get("ARES_REASONER_MODEL") else "extractive", "paid_services": False}
+        revision = os.environ.get('ARES_BUILD_REVISION', '')
+        revision = revision.lower() if re.fullmatch(r'[a-fA-F0-9]{40}', revision) else 'unknown'
+        return {"username": user, "mode": "local-model-assisted" if os.environ.get("ARES_REASONER_MODEL") else "extractive", "paid_services": False,
+                "build_revision": revision}
     @app.post("/projects", status_code=201)
     def create_project(body: ProjectInput, user=Depends(limited)):
         identifier = str(uuid4())
@@ -383,7 +387,7 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
         app.mount("/assets", StaticFiles(directory=static / "assets"), name="assets")
         @app.get("/", include_in_schema=False)
         def workspace():
-            return FileResponse(static / "index.html")
+            return FileResponse(static / "index.html", headers={"Cache-Control": "no-cache"})
     return app
 def app_factory():
     credentials = json.loads(os.environ.get("ARES_CREDENTIALS", "{}"))
