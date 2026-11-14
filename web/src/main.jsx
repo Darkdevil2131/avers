@@ -150,10 +150,38 @@ export function App() {
       setModal({ type: 'tool', result: result.result });
     } catch (exc) { setError(exc.message); } finally { setBusy(false); }
   }
-  function download() {
-    const blob = new Blob([report.markdown], { type: 'text/markdown' });
+  async function uploadPdf(event) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const query = new URLSearchParams({title: data.get('title'), license_status: data.get('license_status'), study_id: data.get('study_id')});
+    setBusy(true); setError('');
+    try {
+      await api('/projects/' + project.id + '/sources/pdf?' + query, {
+        method: 'POST', body: data.get('file'), headers: {'Content-Type': 'application/pdf'},
+      });
+      setModal(null);
+      await refresh(project.id);
+    } catch (exc) { setError(exc.message); } finally { setBusy(false); }
+  }
+  function saveDownload(blob, filename) {
     const url = URL.createObjectURL(blob), link = document.createElement('a');
-    link.href = url; link.download = 'ares-report.md'; link.click(); URL.revokeObjectURL(url);
+    link.href = url; link.download = filename; link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  async function downloadPdf(path, filename) {
+    try {
+      const response = await fetch('/projects/' + project.id + path, {
+        headers: {Authorization: 'Bearer ' + token},
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'PDF download failed.');
+      }
+      saveDownload(await response.blob(), filename);
+    } catch (exc) { setError(exc.message); }
+  }
+  function download() {
+    saveDownload(new Blob([report.markdown], {type: 'text/markdown'}), 'ares-report.md');
   }
   useEffect(() => {
     if (user && !modal) return;
@@ -218,7 +246,7 @@ export function App() {
           </form>
           <div className="results-grid">
             <section className="report-panel">
-              <div className="section-heading"><h2>Evidence report</h2>{report && <button className="quiet" onClick={download}>↓ Export</button>}</div>
+              <div className="section-heading"><h2>Evidence report</h2>{report && <div><button className="quiet" onClick={download}>Download Markdown</button><button className="quiet" onClick={() => downloadPdf('/runs/' + run.id + '/report.pdf', 'ares-report.pdf')}>Download PDF</button></div>}</div>
               {report ? <>
                 <div className="assessment"><span className="assessment-badge">{report.assessment || 'inconclusive'}</span><span>{report.reviewed_claim ? 'Reviewed claim assessment at run time' : 'Scientific assessment requires review'}</span></div>
                 {report.outdated_sources.length > 0 && <p className="warning">Source reviews have changed since this report was saved. Start a new run to refresh the evidence.</p>}
@@ -238,7 +266,7 @@ export function App() {
                 {report.hypotheses?.map((h,i)=><article className="citation" key={'h'+i}><h3>Follow-up proposal · requires review</h3><p>{h.statement}</p>{!h.evidence_refs?.length && <blockquote>{h.basis_quote}</blockquote>}<p>{h.mechanism}</p><p>Falsification: {h.falsification}</p><ExperimentPlan plan={h.experiment_plan} evidence={h.evidence_refs}/>{h.kind !== 'exposure_comparison_candidate' && <ProposalReview check={h.consistency_check}/>}<p>No experiment has been executed. Novelty has not been established.</p></article>)}
                 {report.citations.map(citation => <article className="citation" key={citation.label}>
                   <div className="citation-heading"><span className="citation-label">{citation.label}</span><span>{citation.origin.endsWith('_metadata') ? 'Bibliographic metadata' : citation.origin.endsWith('_fulltext') ? 'Licensed full-text passage' : 'Source passage'}</span></div>
-                  <h4>{citation.title}</h4><blockquote>{citation.quote}</blockquote>
+                  <h4>{citation.title}</h4>{citation.pdf_pages?.length > 0 && <p>PDF pages {citation.pdf_pages.map(item => item.page + (item.method === 'ocr' ? ' (OCR)' : '')).join(', ')}</p>}<blockquote>{citation.quote}</blockquote>
                   <div className="citation-meta"><a href={safeLink(citation.url)} target="_blank" rel="noreferrer">{citation.url}</a><span>Characters {citation.start_offset}–{citation.end_offset}</span></div>
                   {project.role === 'owner' && <div><button className="quiet" onClick={async()=>{try{await api('/projects/'+project.id+'/runs/'+run.id+'/feedback',{method:'POST',body:JSON.stringify({source_id:citation.source_id,relevant:true})});setError('Relevance feedback saved for future similar queries.')}catch(e){setError(e.message)}}}>Useful source</button><button className="quiet" onClick={async()=>{try{await api('/projects/'+project.id+'/runs/'+run.id+'/feedback',{method:'POST',body:JSON.stringify({source_id:citation.source_id,relevant:false})});setError('Relevance feedback saved for future similar queries.')}catch(e){setError(e.message)}}}>Not relevant</button></div>}
                   <details><summary>Provenance</summary><p>{citation.license_status}</p><code>SHA-256 {citation.digest}</code><p>Stored {new Date(citation.retrieved_at).toLocaleString()}</p></details>
@@ -252,7 +280,7 @@ export function App() {
           </div>
         </> : tab === 'memory' && project ? <Memory key={project.id} api={api} project={project}/> : tab === 'evidence' && project ? <Evidence key={project.id} api={api} project={project} sources={sources} onResearchClaim={claim=>{setSelectedClaim(claim);setQuestion(claim.statement);setTab('research')}}/> : <section className="source-list">
           {!sources.length && <div className="empty-report"><h3>No sources yet</h3><p>Add text you have permission to use, with its source URL and license information.</p></div>}
-          {sources.map(source => <article key={source.id}><div><span className="source-icon">▤</span></div><div className="source-content"><h3>{source.title}</h3><a href={safeLink(source.url)} target="_blank" rel="noreferrer">{source.url}</a><p>{source.text.slice(0, 220)}{source.text.length > 220 ? '…' : ''}</p><span className={'source-status ' + source.status}>{source.status}</span><span className="source-kind">{source.origin.replaceAll('_', ' ')}</span></div><button className="quiet" disabled={project?.role === 'viewer'} onClick={() => setModal({ type: 'review', source })}>Review</button></article>)}
+          {sources.map(source => <article key={source.id}><div><span className="source-icon">▤</span></div><div className="source-content"><h3>{source.title}</h3><a href={safeLink(source.url)} target="_blank" rel="noreferrer">{source.url}</a><p>{source.text.slice(0, 220)}{source.text.length > 220 ? '…' : ''}</p><span className={'source-status ' + source.status}>{source.status}</span><span className="source-kind">{source.origin.replaceAll('_', ' ')}</span>{source.origin === 'user_pdf' && <button className="quiet" onClick={() => downloadPdf('/sources/' + source.id + '/original.pdf', 'ares-source.pdf')}>Download original PDF</button>}</div><button className="quiet" disabled={project?.role === 'viewer'} onClick={() => setModal({ type: 'review', source })}>Review</button></article>)}
         </section>}
         <footer>ARES <span>Evidence stays traceable. Conclusions stay open to review.</span></footer>
         <BuildInfo backend={user?.build_revision}/>
@@ -262,7 +290,8 @@ export function App() {
     {user && modal && <div className="overlay" onClick={event => { if (event.target === event.currentTarget) setModal(null); }}><div className="modal" role="dialog" aria-modal="true" aria-label={modal.type}><button className="close" aria-label="Close dialog" onClick={() => setModal(null)}>×</button>
       {error && <p role="alert" className="error">{error}</p>}
       {modal.type === 'projects' && <><h2>Projects</h2><div className="project-options">{projects.map(item => <button key={item.id} onClick={() => { setProject(item); setModal(null); }}>{item.name}<small>{item.role}</small></button>)}</div><form onSubmit={createProject}><label htmlFor="project-name">New project</label><input id="project-name" name="name" placeholder="Materials research" required maxLength={200}/><button className="primary" disabled={busy}>Create project</button></form></>}
-      {modal.type === 'source' && <form onSubmit={addSource}><h2>Add a source</h2><p>Paste text you have permission to store. The original text is preserved for exact citations.</p><label>Title<input name="title" maxLength={500} placeholder="Study title"/></label><label>Source URL or reference<input name="url" required maxLength={2000} placeholder="https://…"/></label><label>License or permission<input name="license_status" required maxLength={200} placeholder="CC BY 4.0, or your permission to use this text"/></label><label>Study identifier<input name="study_id" maxLength={500} placeholder="DOI or trial ID, if known"/></label><label>Source text<textarea name="text" required maxLength={100000} rows={7}/></label><button className="primary" disabled={busy}>Save source</button></form>}
+      {modal.type === 'pdf' && <form onSubmit={uploadPdf}><h2>Upload research PDF</h2><p>Up to 2 MB and 40 pages. English OCR runs on up to eight pages without a text layer.</p><label>PDF file<input name="file" type="file" accept=".pdf,application/pdf" required/></label><label>Title<input name="title" maxLength={500}/></label><label>Study identifier<input name="study_id" maxLength={500} placeholder="DOI or study ID, if known"/></label><label>License or permission<input name="license_status" required maxLength={200}/></label><button className="primary" disabled={busy}>Upload PDF</button></form>}
+      {modal.type === 'source' && <form onSubmit={addSource}><h2>Add a source</h2><button type="button" className="secondary" onClick={() => setModal({type:'pdf'})}>Upload a PDF</button><p>Paste text you have permission to store. The original text is preserved for exact citations.</p><label>Title<input name="title" maxLength={500} placeholder="Study title"/></label><label>Source URL or reference<input name="url" required maxLength={2000} placeholder="https://…"/></label><label>License or permission<input name="license_status" required maxLength={200} placeholder="CC BY 4.0, or your permission to use this text"/></label><label>Study identifier<input name="study_id" maxLength={500} placeholder="DOI or trial ID, if known"/></label><label>Source text<textarea name="text" required maxLength={100000} rows={7}/></label><button className="primary" disabled={busy}>Save source</button></form>}
       {modal.type === 'review' && <form onSubmit={review}><h2>Review source</h2><p>{modal.source.title}</p><label>Status<select name="status" defaultValue={modal.source.status}><option>active</option><option>retracted</option><option>excluded</option></select></label><label>Reason and supporting reference<textarea name="reason" required minLength={8} maxLength={2000} rows={4}/></label><button className="primary" disabled={busy}>Record review</button></form>}
       {modal.type === 'tool' && <form onSubmit={tool}><h2>Describe a sample</h2><p>Calculate the mean, sample standard deviation, and range of explicit observations.</p><label>Values, separated by commas<textarea name="values" required rows={4} placeholder="12, 15, 18, 21"/></label><button className="primary" disabled={busy}>Calculate</button>{modal.result && <dl className="tool-result">{Object.entries(modal.result).map(([key, value]) => <React.Fragment key={key}><dt>{key.replaceAll('_', ' ')}</dt><dd>{value.toLocaleString(undefined, { maximumFractionDigits: 6 })}</dd></React.Fragment>)}</dl>}</form>}
     </div></div>}

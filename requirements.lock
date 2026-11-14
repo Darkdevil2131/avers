@@ -121,3 +121,5 @@ urllib3==2.8.0
     # via requests
 uvicorn==0.52.1
     # via -r requirements.in
+
+reportlab==4.4.9

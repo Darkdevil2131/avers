@@ -128,14 +128,26 @@ class ResearchEngine:
                 passages,retrieval = hybrid_search(dbs, db, run["project_id"], run["question"])
                 dbs.event(db,run_id,"memory_retrieval",retrieval)
                 citations = []
+                pdf_documents = {}
                 for passage in passages:
                     original = db.execute("SELECT text FROM sources WHERE id=?", (passage["source_id"],)).fetchone()[0]
                     if original[passage["start_offset"]:passage["end_offset"]] != passage["text"]:
                         raise ValueError("Citation integrity check failed")
-                    citations.append({
+                    citation = {
                         **{k: v for k, v in passage.items() if k != "rank"},
                         "label": f"S{len(citations) + 1}", "quote": passage["text"],
-                    })
+                    }
+                    if passage.get("origin") == "user_pdf":
+                        source_id = passage["source_id"]
+                        if source_id not in pdf_documents:
+                            row = db.execute("SELECT metadata FROM documents WHERE source_id=?", (source_id,)).fetchone()
+                            pdf_documents[source_id] = json.loads(row["metadata"])["locations"] if row else []
+                        citation["pdf_pages"] = [
+                            {"page": item["page"], "method": item["method"]}
+                            for item in pdf_documents[source_id]
+                            if item["start"] < passage["end_offset"] and passage["start_offset"] < item["end"]
+                        ]
+                    citations.append(citation)
                 dbs.event(db, run_id, "retrieve", {"passages": len(citations),
                           "sources": len({c["source_id"] for c in citations})})
                 dbs.event(db, run_id, "audit", {"exact_spans_checked": len(citations), "tool":"citation_audit",
@@ -212,6 +224,9 @@ class ResearchEngine:
                     lines += [f"## [{citation['label']}] {citation['title']}", "",
                               citation["quote"], "", citation["url"],
                               f"Source SHA-256 {citation['digest']}", ""]
+                    if citation.get("pdf_pages"):
+                        pages = ", ".join(f"{item['page']} ({item['method']})" for item in citation["pdf_pages"])
+                        lines += [f"PDF pages: {pages}", ""]
                 lines += ["## Extracted candidate findings", ""]+[f"- [{f['citation']}] {f['statement']}" for f in findings]
                 for finding in findings:
                     for field, value in finding['reported_exposure'].items():
