@@ -4,6 +4,7 @@ import Scene from './Scene';
 import Evidence from './Evidence';
 import Memory from './Memory';
 import ProposalReview from './ProposalReview';
+import Workflow from './Workflow';
 import './style.css';
 const STAGES = {
   collection_summary: 'Source collection recorded',
@@ -169,7 +170,7 @@ export function App() {
   const selectedEvent = events.at(-1);
   const running = run && !TERMINAL.has(run.status);
   return <div className="app">
-    <aside inert={!user || !!modal}>
+    <aside className="app-sidebar" inert={!user || !!modal}>
       <div className="brand"><div className="brand-mark">A</div><div>ARES<small>Scientific intelligence</small></div></div>
       <div className="sidebar-label">WORKSPACE</div>
       <button className="project-select" onClick={() => setModal({ type: 'projects' })} disabled={!user}>
@@ -195,9 +196,10 @@ export function App() {
         setError(''); setStreamError(false); setEvents([]); setStreamAttempt(value => value + 1);
       }}>Reconnect to run</button>}
       <div className="main-content">
-        <div className="page-title"><div><p className="eyebrow">EVIDENCE FIRST</p><h1>{tab === 'research' ? 'Follow the evidence.' : tab === 'memory' ? 'Keep research reviewable.' : tab === 'evidence' ? 'Review the scientific context.' : 'Your research sources.'}</h1><p>{tab === 'research' ? 'Ask a question. Inspect the sources. Keep the evidence traceable.' : 'Versioned source text, provenance, and review status in one place.'}</p></div><button className="secondary" disabled={!project || project.role === 'viewer'} onClick={() => setModal({ type: 'source' })}>＋ Add source</button></div>
+        <div className="page-title"><div><p className="eyebrow">EVIDENCE FIRST</p><h1>{tab === 'research' ? 'Research, with a record.' : tab === 'memory' ? 'Keep research reviewable.' : tab === 'evidence' ? 'Review the scientific context.' : 'Your research sources.'}</h1><p>{tab === 'research' ? 'Define a hypothesis. Collect evidence. Inspect every decision.' : 'Versioned source text, provenance, and review status in one place.'}</p></div><button className="secondary" disabled={!project || project.role === 'viewer'} onClick={() => setModal({ type: 'source' })}>＋ Add source</button></div>
 
         {tab === 'research' ? <>
+          <Workflow events={events} run={run}/>
           <section className="map-card">
             <div className="map-top"><span><i className="status-light"/>{running ? STAGES[selectedEvent?.stage] || 'Waiting for worker' : 'Research activity'}</span><span>{sources.length} stored sources · {report?.citations.length || 0} cited passages</span></div>
             <Scene sources={sources} cited={cited} reduced={reduced} activity={selectedEvent} running={running}/>

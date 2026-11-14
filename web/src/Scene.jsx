@@ -23,38 +23,49 @@ export default function Scene({ sources, cited, reduced, activity, running }) {
             new THREE.MeshBasicMaterial({ color, wireframe: true }));
           mesh.position.copy(position); objects.add(mesh); return mesh;
         };
-        addNode(new THREE.Vector3(0, 0, 0), .65, 0xd9f6aa);
+        addNode(new THREE.Vector3(0, 0, 0), .65, 0xa9c8f5);
         sources.slice(0, 24).forEach((source, index) => {
           const angle = index * 2.39996;
           const radius = 2.3 + index % 3 * .85;
           const position = new THREE.Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius * .6, (index % 5 - 2) * .6);
           const included = cited.has(source.id);
-          addNode(position, included ? .23 : .16, included ? 0xd9f6aa : 0x6b979b);
+          addNode(position, included ? .23 : .16, included ? 0xa9c8f5 : 0x6b979b);
           if (included) {
             const geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), position]);
-            objects.add(new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0x71926a, transparent: true, opacity: .5 })));
+            objects.add(new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0x769cc8, transparent: true, opacity: .5 })));
           }
         });
         let frame=0;
         const collecting=running && activity?.stage === 'spider_fetch';
-        const querying=running && activity?.stage === 'memory_retrieval';
+        const querying=running && ['memory_retrieval','retrieve'].includes(activity?.stage);
         if (collecting) {
+          // The web represents collection activity, not invented source connections.
+          for(let ring=1;ring<=4;ring++) {
+            const points=Array.from({length:13},(_,i)=>new THREE.Vector3(Math.cos(i*Math.PI/6)*ring,Math.sin(i*Math.PI/6)*ring*.65,0));
+            objects.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0x52759a,transparent:true,opacity:.25})));
+          }
+          for(let spoke=0;spoke<12;spoke++) {
+            const angle=spoke*Math.PI/6;
+            objects.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3(Math.cos(angle)*4,Math.sin(angle)*2.6,0)]),new THREE.LineBasicMaterial({color:0x52759a,transparent:true,opacity:.25})));
+          }
           const spider=new THREE.Group();
-          const material=new THREE.MeshBasicMaterial({color:0xd9f6aa});
+          const material=new THREE.MeshBasicMaterial({color:0xa9c8f5});
           spider.add(new THREE.Mesh(new THREE.SphereGeometry(.23,12,12),material));
           const head=new THREE.Mesh(new THREE.SphereGeometry(.13,12,12),material);head.position.y=.28;spider.add(head);
           for(let side of [-1,1]) for(let leg=0;leg<4;leg++) {
             const y=(leg-1.5)*.15;
             const points=[new THREE.Vector3(side*.13,y,0),new THREE.Vector3(side*.46,y+.2,0),new THREE.Vector3(side*.7,y-.15,0)];
-            spider.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0xd9f6aa})));
+            spider.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:0xa9c8f5})));
           }
           spider.position.set(0,1.2,1);objects.add(spider);
           const tick=time=>{spider.position.x=Math.sin(time/900)*1.5;renderer.render(scene,camera);frame=requestAnimationFrame(tick)};
           frame=requestAnimationFrame(tick);
         }
         if(querying){
-          const cylinder=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,.7,20),new THREE.MeshBasicMaterial({color:0x71926a,wireframe:true}));
+          const cylinder=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,.7,20),new THREE.MeshBasicMaterial({color:0x769cc8,wireframe:true}));
           cylinder.position.set(0,1.5,1);objects.add(cylinder);
+          const tick=time=>{cylinder.rotation.y=time/1800;renderer.render(scene,camera);frame=requestAnimationFrame(tick)};
+          frame=requestAnimationFrame(tick);
         }
         const resize = () => {
           const width = host.clientWidth, height = host.clientHeight;
