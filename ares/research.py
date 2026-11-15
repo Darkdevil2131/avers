@@ -204,7 +204,15 @@ class ResearchEngine:
                           'Status: ' + collection['status'],
                           f"Metadata records: {collection['metadata_records']}; full texts stored: {collection['fulltext_stored']}; full texts attempted: {collection['fulltext_attempted']}",
                           collection['scope'], '']
-                lines += [f"- {error['stage']}: {error['message']}" for error in collection['errors']]
+                for error in collection['errors']:
+                    identifier = f" {error['pmcid']}" if error.get('pmcid') else ''
+                    lines += [f"- {error['stage']}{identifier}: {error['message']}"]
+                    for attempt in error.get('attempts', []):
+                        lines += [f"  - {attempt['provider']}: {attempt['reason'].replace('_', ' ')}"]
+                for item in collection.get('fallbacks', []):
+                    lines += [f"- {item['pmcid']} collected using a fallback provider."]
+                    for attempt in item['attempts']:
+                        lines += [f"  - {attempt['provider']}: {attempt['reason'].replace('_', ' ')}"]
                 lines += [f"- Search ({entry['strategy']}): {entry['query']}" for entry in collection['queries']]
                 if collection['bounded']:
                     lines += ['Collection budget reached; the search is incomplete.']

@@ -258,7 +258,14 @@ export function App() {
                   <p>Status: {report.collection.status.replaceAll('_', ' ')} · {report.collection.metadata_records} metadata records · {report.collection.fulltext_stored} full texts stored</p>
                   <p>{report.collection.scope}</p>
                   {report.collection.bounded && <p className="warning">The collection limit was reached. This search is incomplete.</p>}
-                  {report.collection.errors.map((item,i)=><p className="warning" key={i}>{item.stage}: {item.message}</p>)}
+                  {report.collection.errors.map((item,i)=><div className="warning" key={i}>
+                    <p>{item.stage}{item.pmcid && ' · ' + item.pmcid}: {item.message}</p>
+                    {item.attempts?.map((attempt,j)=><p key={j}>{attempt.provider}: {attempt.reason.replaceAll('_', ' ')}</p>)}
+                  </div>)}
+                  {report.collection.fallbacks?.map((item,i)=><div key={i}>
+                    <p>{item.pmcid} collected using a fallback provider.</p>
+                    {item.attempts.map((attempt,j)=><p key={j}>{attempt.provider}: {attempt.reason.replaceAll('_', ' ')}</p>)}
+                  </div>)}
                   {report.collection.adaptation && <p>Follow-up: {report.collection.adaptation.decision.replaceAll('_', ' ')} · Candidate study identifiers: {report.collection.adaptation.before.candidate_study_ids} before, {report.collection.adaptation.after.candidate_study_ids} after</p>}
                   <details><summary>Search strategy and queries</summary>{report.collection.queries.map((item,i)=><div key={i}><p>{item.strategy}: {item.query}</p>{item.reason && <p>{item.reason}</p>}</div>)}</details>
                 </section>}
@@ -281,7 +288,7 @@ export function App() {
           </div>
         </> : tab === 'memory' && project ? <Memory key={project.id} api={api} project={project}/> : tab === 'evidence' && project ? <Evidence key={project.id} api={api} project={project} sources={sources} onResearchClaim={claim=>{setSelectedClaim(claim);setQuestion(claim.statement);setTab('research')}}/> : <section className="source-list">
           {!sources.length && <div className="empty-report"><h3>No sources yet</h3><p>Add text you have permission to use, with its source URL and license information.</p></div>}
-          {sources.map(source => <article key={source.id}><div><span className="source-icon">▤</span></div><div className="source-content"><h3>{source.title}</h3><a href={safeLink(source.url)} target="_blank" rel="noreferrer">{source.url}</a><p>{source.text.slice(0, 220)}{source.text.length > 220 ? '…' : ''}</p><span className={'source-status ' + source.status}>{source.status}</span><span className="source-kind">{source.origin.replaceAll('_', ' ')}</span>{source.origin === 'user_pdf' && <button className="quiet" onClick={() => downloadFile('/sources/' + source.id + '/original.pdf', 'ares-source.pdf')}>Download original PDF</button>}{['user_pdf', 'europepmc_fulltext'].includes(source.origin) && <button className="quiet" onClick={() => downloadFile('/sources/' + source.id + '/document', 'ares-source-document.json')}>Download structured source</button>}</div><button className="quiet" disabled={project?.role === 'viewer'} onClick={() => setModal({ type: 'review', source })}>Review</button></article>)}
+          {sources.map(source => <article key={source.id}><div><span className="source-icon">▤</span></div><div className="source-content"><h3>{source.title}</h3><a href={safeLink(source.url)} target="_blank" rel="noreferrer">{source.url}</a><p>{source.text.slice(0, 220)}{source.text.length > 220 ? '…' : ''}</p><span className={'source-status ' + source.status}>{source.status}</span><span className="source-kind">{source.origin.replaceAll('_', ' ')}</span>{source.origin === 'user_pdf' && <button className="quiet" onClick={() => downloadFile('/sources/' + source.id + '/original.pdf', 'ares-source.pdf')}>Download original PDF</button>}{['user_pdf', 'europepmc_fulltext', 'ncbi_bioc_fulltext'].includes(source.origin) && <button className="quiet" onClick={() => downloadFile('/sources/' + source.id + '/document', 'ares-source-document.json')}>Download structured source</button>}</div><button className="quiet" disabled={project?.role === 'viewer'} onClick={() => setModal({ type: 'review', source })}>Review</button></article>)}
         </section>}
         <footer>ARES <span>Evidence stays traceable. Conclusions stay open to review.</span></footer>
         <BuildInfo backend={user?.build_revision}/>

@@ -162,3 +162,33 @@ test('dialog errors are visible and Escape closes it',async()=>{
  await waitFor(()=>expect(screen.getByRole('dialog').textContent).toContain('Permission denied'));
  await user.keyboard('{Escape}');expect(screen.queryByRole('dialog')).toBeNull();
 });
+
+test('collection report identifies provider failures and successful fallbacks', async () => {
+ const user = userEvent.setup();
+ const run = {id:'r', question:'Coating research question', status:'completed'};
+ vi.spyOn(globalThis, 'fetch').mockImplementation(async url => {
+  if (url === '/session') return reply({username:'researcher'});
+  if (url === '/projects') return reply([project]);
+  if (url.endsWith('/runs')) return reply([run]);
+  if (url.endsWith('/stream')) return new Response('event: done\ndata: {"status":"completed"}\n\n');
+  if (url.endsWith('/runs/r')) return reply(run);
+  if (url.endsWith('/report')) return reply({
+   question:run.question, summary:'Review evidence.', assessment:'inconclusive',
+   outdated_sources:[], citations:[], limitations:[],
+   collection:{status:'partial', metadata_records:1, fulltext_stored:1, scope:'Bounded', queries:[],
+    errors:[{stage:'fulltext', pmcid:'PMC12', message:'Could not collect.', attempts:[
+     {provider:'Europe PMC', reason:'timeout'}, {provider:'NCBI BioC', reason:'unsupported_license'}]}],
+    fallbacks:[{pmcid:'PMC42', attempts:[{provider:'Europe PMC', reason:'not_found'},
+     {provider:'NCBI BioC', reason:'collected'}]}]},
+  });
+  return reply([]);
+ });
+ render(<App/>);
+ await user.type(screen.getByLabelText('Access token'), 'x'.repeat(32));
+ await user.click(screen.getByRole('button',{name:/Open workspace/}));
+ await user.click(await screen.findByRole('button',{name:run.question}));
+ await screen.findByText('fulltext · PMC12: Could not collect.');
+ expect(screen.getByText('Europe PMC: timeout')).toBeTruthy();
+ expect(screen.getByText('NCBI BioC: unsupported license')).toBeTruthy();
+ expect(screen.getByText('PMC42 collected using a fallback provider.')).toBeTruthy();
+});
