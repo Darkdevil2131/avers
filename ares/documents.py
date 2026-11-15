@@ -4,6 +4,13 @@ import re
 from defusedxml import ElementTree as ET
 
 ALLOWED_LICENSE = re.compile(r'https?://creativecommons.org/(?:licenses/(?:by|by-sa)/[134]\.0|publicdomain/zero/1\.0)/?$', re.I)
+# A subset of Europe PMC documents declares this external JATS DTD. Remove
+# only its declaration; the parser still forbids all DTDs and entity declarations.
+JATS_EXTERNAL_DOCTYPE = re.compile(
+    rb'\A((?:\xef\xbb\xbf)?\s*(?:<\?xml\s+[^?]*\?>\s*)?)'
+    rb'<!DOCTYPE\s+article\s+PUBLIC\s+"-//NLM//DTD JATS [^"<>\[\]]{1,250}"\s+'
+    rb'"JATS-[A-Za-z0-9._-]+\.dtd"\s*>\s*',
+)
 
 
 class UnsupportedLicense(ValueError):
@@ -63,7 +70,8 @@ def _jats_tables(parts):
 def parse_jats(raw: bytes, pmcid: str):
     if len(raw)>4_000_000:
         raise DocumentLimitError('XML exceeds 4 MB budget')
-    root=ET.fromstring(raw, forbid_dtd=True, forbid_entities=True, forbid_external=True)
+    parse_input = JATS_EXTERNAL_DOCTYPE.sub(rb'\1', raw, count=1)
+    root=ET.fromstring(parse_input, forbid_dtd=True, forbid_entities=True, forbid_external=True)
     text = _text
     licenses=root.findall('.//permissions/license')
     links=[v for node in licenses for descendant in node.iter() for k,v in descendant.attrib.items() if k.endswith('href')]

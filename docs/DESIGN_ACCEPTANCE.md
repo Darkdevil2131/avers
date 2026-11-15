@@ -23,7 +23,8 @@ For a full-text failure, new collection reports identify the PMC article and sho
 sanitized outcomes for both providers, such as a timeout, missing article, or
 unsupported license. A successful NCBI BioC fallback preserves the primary
 failure category in the structured document. Historical reports retain their
-original error details.
+original error details. The JATS parser handles a narrowly recognized standard
+external JATS declaration while continuing to reject embedded DTDs and entities.
 
 ## Literature screening, table export and historical replay
 
