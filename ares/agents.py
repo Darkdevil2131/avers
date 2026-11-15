@@ -8,6 +8,7 @@ WORDS=re.compile(r'[A-Za-z][A-Za-z-]{2,}')
 STOP=set('the and with from that this were was are for not but study studies results effect effects'.split())
 DIRECTION=re.compile(r'\b(increas\w*|decreas\w*|reduc\w*|improv\w*|associated|correlat\w*|no significant|not associated|did not)\b',re.I)
 NUMBER=re.compile(r'(?<!\w)(?:n\s*=\s*)?[-+]?\d+(?:\.\d+)?\s*(?:%|mg|kg|mm|cm|°C|K|days?|hours?|months?|years?)?',re.I)
+REFERENCE_MARKER = re.compile(r'\[\s*\d+(?:\s*[,;–-]\s*\d+)*\s*\]')
 def terms(value):return set(w.lower() for w in WORDS.findall(value))-STOP
 def plan(question):
     words=terms(question)
@@ -32,7 +33,9 @@ def extract(citations,question):
             if identity in seen:continue
             seen.add(identity)
             start=citation['start_offset']+left
-            numbers=[m.group().strip() for m in NUMBER.finditer(value)]
+            references = list(REFERENCE_MARKER.finditer(value))
+            numbers = [m.group().strip() for m in NUMBER.finditer(value)
+                       if not any(ref.start() <= m.start() < ref.end() for ref in references)]
             design=next((d for d in ['randomized','observational','retrospective','in vitro','simulation','cohort','systematic review'] if d in value.lower()),None)
             findings.append({'source_id':citation['source_id'],'citation':citation['label'],'statement':value,
                              'start_offset':start,'end_offset':start+len(value),'measurements':numbers,
