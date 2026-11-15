@@ -112,3 +112,11 @@ def check_report_context(api):
     assert context['state'] == 'review-conflict'
     assert len(context['review_ids']) == 3
     assert api.get(route).json()['critique']['potential_disagreements'][0]['reviewed_context']['state'] == 'context-mismatched'
+
+
+def test_different_levels_are_still_surfaced_for_human_review():
+    pair = review('Coating adhesion increased after low humidity exposure.',
+                  'Coating adhesion decreased after high humidity exposure.')['potential_disagreements'][0]
+    assert pair['signal'] == 'opposing_direction'
+    assert not pair['automatic_verdict']
+    assert not pair['context_verified']

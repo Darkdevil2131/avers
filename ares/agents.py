@@ -70,7 +70,7 @@ def critique(findings,citations,reviewed_contexts=None):
             overlap=len(a&b)/max(1,len(a|b))
             negative=lambda s:bool(re.search(r'\b(no significant|not associated|did not|no effect)\b',s,re.I))
             direction=proposal_critic({'statement':left['statement'],'basis_quote':right['statement']})['direction_check']
-            opposing=direction['status']=='potential_opposition'
+            opposing=direction['opposing_direction_words']
             negated=negative(left['statement'])!=negative(right['statement'])
             if overlap>=.35 and (opposing or negated):
                 left_identity = identities.get(left['citation'])
@@ -189,15 +189,30 @@ def proposal_critic(proposal):
         if up != down:return (1 if up else -1), 'predicative_comparison'
         return 0, 'direction_not_established'
     (a,a_reason),(b,b_reason)=direction(hypothesis),direction(quote)
+    # Different explicitly named levels are not automatically contradictory.
+    # This is a narrow wording signal; it does not establish study comparability.
+    def level_mentions(value):
+        levels={}
+        for match in re.finditer(r'\b(high|higher|low|lower)\s+([a-z][a-z-]{2,})\b', value):
+            level='high' if match.group(1) in ('high','higher') else 'low'
+            levels.setdefault(match.group(2),set()).add(level)
+        return levels
+    hypothesis_levels=level_mentions(hypothesis)
+    quote_levels=level_mentions(quote)
+    distinct_levels=any(hypothesis_levels[term].isdisjoint(quote_levels[term])
+                        for term in hypothesis_levels.keys() & quote_levels.keys())
     shared=len(terms(hypothesis)&terms(quote))/max(1,len(terms(hypothesis)))
-    opposition=a*b==-1 and shared>=.3
+    opposing_words=a*b==-1 and shared>=.3
+    opposition=opposing_words and not distinct_levels
     if opposition:
         reasons.append('Proposed direction opposes its cited observation without a validated reconciliation')
     if any(x in mechanism for x in ('not supported by the evidence','contradicts the evidence')):
         reasons.append('The generated mechanism explicitly disclaims its own evidential support')
     return {'accepted_as_candidate':not reasons,'reasons':reasons,'scientific_validation':False,
-            'direction_check':{'status':'potential_opposition' if opposition else 'requires_review' if not a or not b or shared<.3 else 'no_opposition_detected',
+            'direction_check':{'status':'potential_opposition' if opposition else 'requires_review' if not a or not b or shared<.3 or distinct_levels else 'no_opposition_detected',
                                'hypothesis_basis':a_reason,'evidence_basis':b_reason,
-                               'context_verified':False},
+                               'context_verified':False,
+                               'different_named_levels':distinct_levels,
+                               'opposing_direction_words':opposing_words},
             'limitations':['Direction words do not verify matching outcomes, populations, exposures or causal support.',
                            'A proposal not rejected by these rules still requires scientific review.']}
