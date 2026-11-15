@@ -25,6 +25,17 @@ def test_extraction_exact_span_and_candidate_only():
     assert item['status']=='candidate' and item['context_verified'] is False
     assert critique(result,citations)['decision']=='abstain_from_scientific_verdict'
 
+
+def test_citation_markers_are_not_reported_as_measurements(monkeypatch):
+    monkeypatch.setattr(DENSE, 'rerank', lambda question, values: [1.0] * len(values))
+    text = ('Humidity reduced coating adhesion by 20% after 7 days [43]. '
+            'Humidity increased coating wear by 5 mm [ 11, 13-15 ].')
+    citations = [{'source_id': 's', 'label': 'S1', 'quote': text,
+                  'start_offset': 0, 'origin': 'user_supplied', 'url': 'fixture'}]
+    findings = extract(citations, 'humidity coating adhesion wear')
+    assert findings[0]['measurements'] == ['20%', '7 days']
+    assert findings[1]['measurements'] == ['5 mm']
+
 def test_spider_follows_references_with_bounded_cycle_and_real_events(tmp_path):
     class Provider:
         def __init__(self):self.fetched=[]
