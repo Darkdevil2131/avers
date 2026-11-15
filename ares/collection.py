@@ -3,6 +3,7 @@
 import re
 
 from .providers import ProviderError
+from .study_identifiers import study_identifier
 
 MAX_SEARCHES = 2
 
@@ -11,7 +12,7 @@ def evidence_signals(findings, citations, criticism):
     """Counts describe retrieval coverage, never study quality or independence."""
     by_label = {citation['label']: citation for citation in citations}
     studies = {
-        by_label[finding['citation']]['study_id']
+        study_identifier(by_label[finding['citation']]['study_id'])
         for finding in findings if by_label[finding['citation']].get('study_id')
     }
     return {

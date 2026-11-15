@@ -1,6 +1,7 @@
 import json
 from typing import Literal
 from pydantic import BaseModel, Field
+from .study_identifiers import study_identifier
 class Fingerprint(BaseModel):
     subject: str = Field(default="", max_length=300)
     variable: str = Field(default="", max_length=300)
@@ -113,7 +114,7 @@ def assess(db, claim):
         item["context"] = compare_context(fingerprint, item["fingerprint"])
         if item["source_status"] == "active" and item["context"]["state"] == "compatible":
             stances.add(item["stance"])
-            groups.add(item["study_id"])
+            groups.add(study_identifier(item["study_id"]))
         evidence.append(item)
     status = "inconclusive"
     if {"supports", "contradicts"} <= stances:
@@ -190,7 +191,7 @@ def snapshot_reviewed_claim(db, project_id, run_id):
         item['exclusions'] = reasons
         if not reasons:
             stances.add(item['stance'])
-            groups.setdefault(item['study_id'], set()).add(item['stance'])
+            groups.setdefault(study_identifier(item['study_id']), set()).add(item['stance'])
         evidence.append(item)
 
     if count > REVIEWED_LINK_LIMIT:

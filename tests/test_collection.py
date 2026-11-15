@@ -2,6 +2,7 @@ import io
 import json
 import pytest
 from ares.providers import EuropePMC, ProviderError
+from ares.collection import evidence_signals, follow_up
 from test_research import client, project, run, source, FixtureProvider
 from fastapi.testclient import TestClient
 
@@ -13,6 +14,15 @@ class Opener:
     def open(self, *args, **kwargs):
         self.calls += 1
         return io.BytesIO(json.dumps(self.payload).encode())
+
+
+def test_adaptive_planner_counts_identifier_variants_once():
+    findings = [{'citation': label} for label in ('S1', 'S2')]
+    citations = [{'label': 'S1', 'study_id': 'doi:10.5555/Coatings'},
+                 {'label': 'S2', 'study_id': 'https://doi.org/10.5555/coatings'}]
+    signals = evidence_signals(findings, citations, {'potential_disagreements': []})
+    assert signals['candidate_study_ids'] == 1
+    assert follow_up('Does humidity affect coating adhesion?', signals)[0] == 'broaden_search'
 
 
 @pytest.mark.parametrize('records', [None, {}, ['invalid'], 42])

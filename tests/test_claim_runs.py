@@ -17,10 +17,10 @@ def exercise_claim_run(api):
     body = {'question': 'Does humidity affect coating stability?', 'claim_id': claim}
     assert api.post(prefix + '/runs', json={**body, 'claim_id': foreign_claim}).status_code == 404
 
-    def link(text, stance, fingerprint=CONTEXT):
+    def link(text, stance, fingerprint=CONTEXT, study_id='DOI:10.5555/Coating-Fixture'):
         item = api.post(prefix + '/sources', json={
             'url': 'https://example.org/' + stance, 'title': stance,
-            'text': text, 'license_status': 'Synthetic fixture', 'study_id': 'same-study-fixture',
+            'text': text, 'license_status': 'Synthetic fixture', 'study_id': study_id,
         })
         assert item.status_code == 201
         source_id = item.json()['id']
@@ -59,13 +59,14 @@ def exercise_claim_run(api):
                         headers={'Idempotency-Key': 'reviewed-assessment'})
     assert conflict.status_code == 409
 
-    link('Independent excerpt for the test fixture.', 'contradicts')
+    link('Second excerpt from the same article fixture.', 'contradicts',
+         study_id='https://doi.org/10.5555/coating-fixture')
     assert api.get(route).json()['review_links_changed'] is True
     mixed = f"{prefix}/runs/{submit('mixed-assessment')}/report"
     mixed_report = api.get(mixed).json()
     assert mixed_report['assessment'] == 'mixed'
     assert mixed_report['reviewed_claim']['study_groups'] == [
-        {'identifier': 'same-study-fixture', 'stances': ['contradicts', 'supports']},
+        {'identifier': '10.5555/coating-fixture', 'stances': ['contradicts', 'supports']},
     ]
     retraction = api.post(f'{prefix}/sources/{supported_source}/review', json={
         'status': 'retracted', 'reason': 'Synthetic retraction for regression testing',

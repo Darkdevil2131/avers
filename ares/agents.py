@@ -2,11 +2,17 @@ import re
 from collections import Counter
 from .evidence import compare_reviewed_findings
 from .exposure import compare_exposure, extract_exposure
+from .study_identifiers import study_identifier
 from .text_spans import sentence_spans
 WORDS=re.compile(r'[A-Za-z][A-Za-z-]{2,}')
 STOP=set('the and with from that this were was are for not but study studies results effect effects'.split())
 DIRECTION=re.compile(r'\b(increas\w*|decreas\w*|reduc\w*|improv\w*|associated|correlat\w*|no significant|not associated|did not)\b',re.I)
 NUMBER=re.compile(r'(?<!\w)(?:n\s*=\s*)?[-+]?\d+(?:\.\d+)?\s*(?:%|mg|kg|mm|cm|°C|K|days?|hours?|months?|years?)?',re.I)
+CONTEXT_CUE = re.compile(
+    r'^(?:these|those|this|that|they|it|such|we also|furthermore|moreover|'
+    r'in addition|in contrast|however|also)\b', re.I,
+)
+MAX_CONTEXT_SCORES = 16
 def terms(value):return set(w.lower() for w in WORDS.findall(value))-STOP
 def plan(question):
     words=terms(question)
@@ -20,37 +26,71 @@ def extract(citations,question):
     """Extract candidates verbatim; no generated claims or guessed study attributes."""
     findings=[];q=terms(question)
     seen=set()
+    context_scores = 0
     for citation in citations:
         if citation.get('origin','').endswith('_metadata'):continue
         text=citation['quote']
         if len(findings)>=80:break
+        previous_span = None
+        previous_matches = False
         for left,right in sentence_spans(text):
             value=text[left:right]
-            if len(value)<30 or not (terms(value)&q):continue
+            matches = bool(terms(value) & q)
+            context = None
+            if (previous_matches and context_scores < MAX_CONTEXT_SCORES and CONTEXT_CUE.match(value)):
+                previous_left, previous_right = previous_span
+                if '\n' not in text[previous_right:left]:
+                    context = text[max(previous_left, previous_right - 600):previous_right]
+            previous_span, previous_matches = (left, right), matches
+            if len(value)<30 or not (matches or context):continue
             identity=(citation['source_id'],value)
             if identity in seen:continue
             seen.add(identity)
             start=citation['start_offset']+left
             numbers=[m.group().strip() for m in NUMBER.finditer(value)]
             design=next((d for d in ['randomized','observational','retrospective','in vitro','simulation','cohort','systematic review'] if d in value.lower()),None)
-            findings.append({'source_id':citation['source_id'],'citation':citation['label'],'statement':value,
+            finding = {'source_id':citation['source_id'],'citation':citation['label'],'statement':value,
                              'start_offset':start,'end_offset':start+len(value),'measurements':numbers,
                              'study_design':design,'context_verified':False,'method':'extractive-pattern-v1',
-                             'passage_relevance_score':citation.get('rerank_score'),'status':'candidate','limitations':['Sentence-level extraction; study context and scientific interpretation require review']})
+                             'passage_relevance_score':citation.get('rerank_score'),'status':'candidate','limitations':['Sentence-level extraction; study context and scientific interpretation require review']}
+            findings.append((finding, matches, context))
+            if context:
+                context_scores += 1
             if len(findings)>=80:break
     if not findings:return []
     try:
         from .retrieval import DENSE
-        scores=DENSE.rerank(question,[f['statement'] for f in findings])
-        for finding,score in zip(findings,scores):
-            finding['sentence_relevance_score']=float(score)
-            finding['selection_score']=float(score) if finding['passage_relevance_score'] is None else .75*float(score)+.25*float(finding['passage_relevance_score'])
-            finding['method']='context-weighted-sentence-reranker-v2'
-        findings.sort(key=lambda f:-f['selection_score'])
+        scores = DENSE.rerank(question, [finding['statement'] for finding, _, _ in findings])
     except (ImportError,OSError,ValueError,RuntimeError):
-        findings=[f for f in findings if DIRECTION.search(f['statement'])]
+        ranked = [finding for finding, matches, _ in findings if matches and DIRECTION.search(finding['statement'])]
+    else:
+        inputs = [(index, f"{finding['statement']} {context}")
+                  for index, (finding, _, context) in enumerate(findings) if context]
+        contextual = {}
+        if inputs:
+            try:
+                contextual = dict(zip([index for index, _ in inputs],
+                                      DENSE.rerank(question, [text for _, text in inputs])))
+            except (ImportError, OSError, ValueError, RuntimeError):
+                pass
+        ranked = []
+        for index, ((finding, matches, _), score) in enumerate(zip(findings, scores)):
+            if not matches and index not in contextual:
+                continue
+            score = float(score)
+            finding['sentence_relevance_score'] = score
+            if index in contextual:
+                context_score = float(contextual[index])
+                finding['neighbor_relevance_score'] = context_score
+                # Discount the neighbor so relevance must improve enough to promote the exact sentence.
+                score = max(score, context_score - .75)
+            passage = finding['passage_relevance_score']
+            finding['selection_score'] = score if passage is None else .85 * score + .15 * float(passage)
+            finding['method'] = 'neighbor-aware-sentence-reranker-v3'
+            ranked.append(finding)
+        ranked.sort(key=lambda finding: -finding['selection_score'])
     # Keep a small review queue; scores measure relevance, never entailment/truth.
-    selected = findings[:3]
+    selected = ranked[:3]
     for finding in selected:
         finding['reported_exposure'] = extract_exposure(finding['statement'], finding['start_offset'])
     return selected
@@ -58,6 +98,7 @@ def extract(citations,question):
 def critique(findings,citations,reviewed_contexts=None):
     pairs=[]
     sources={c['label']:c for c in citations}
+    identities = {label: study_identifier(c.get('study_id') or c['url']) for label, c in sources.items()}
     for index,left in enumerate(findings):
         for right in findings[index+1:]:
             if left['source_id']==right['source_id']:continue
@@ -68,9 +109,8 @@ def critique(findings,citations,reviewed_contexts=None):
             opposing=direction['status']=='potential_opposition'
             negated=negative(left['statement'])!=negative(right['statement'])
             if overlap>=.35 and (opposing or negated):
-                left_source=sources.get(left['citation'],{})
-                right_source=sources.get(right['citation'],{})
-                same_study=bool(left_source.get('study_id') and left_source.get('study_id')==right_source.get('study_id'))
+                left_identity = identities.get(left['citation'])
+                same_study = bool(left_identity and left_identity == identities.get(right['citation']))
                 context = compare_reviewed_findings(left, right, reviewed_contexts or {})
                 pairs.append({'left':left['citation'],'right':right['citation'],'state':'potential_disagreement',
                               'reason':('Related wording with opposing direction words' if opposing else 'Related wording with different negation')+'; context is not verified',
@@ -85,7 +125,8 @@ def critique(findings,citations,reviewed_contexts=None):
                                                   'Are these independent studies or multiple reports of the same study?'],
                               'context_verified':False,'automatic_verdict':False})
     groups={}
-    for c in citations:groups.setdefault(c.get('study_id') or c['url'],[]).append(c['label'])
+    for label, identity in identities.items():
+        groups.setdefault(identity, []).append(label)
     return {'potential_disagreements':pairs[:12],'study_identifier_groups':list(groups.values()),
             'independence_verified':False,'missing_checks':['Full study context','Risk of bias','Independent study identity','Expert scientific appraisal'],
             'decision':'abstain_from_scientific_verdict','reason':'Extractive candidates and retrieval scores do not validate scientific support'}
