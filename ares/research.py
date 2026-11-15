@@ -46,6 +46,13 @@ class ResearchEngine:
 
             def stopped():
                 return time.monotonic() > deadline or no_longer_owned()
+
+            def inference_timeout(cap):
+                if stopped():
+                    return None
+                remaining = deadline - time.monotonic()
+                return min(cap, remaining - 1) if remaining >= 2 else None
+
             def event(stage, payload):
                 with dbs.connect() as db:
                     dbs.event(db, run_id, stage, payload)
@@ -125,7 +132,12 @@ class ResearchEngine:
             event("audit", {"exact_spans_checked": len(citations), "tool": "citation_audit",
                             "scientific_support": "unverified"})
             event("reasoner_started", {"mode": "local model if configured", "network_tools": False})
-            inference=suggest(run["question"],citations) if not stopped() else {"status":"cancelled_or_budget_exhausted","proposals":[]}
+            first_timeout = inference_timeout(90)
+            inference = (
+                suggest(run["question"], citations, timeout_seconds=first_timeout)
+                if first_timeout is not None
+                else {"status": "cancelled_or_budget_exhausted", "proposals": []}
+            )
             rejected=[];proposals=[]
             def review_candidates(candidates):
                 for candidate in candidates:
@@ -137,13 +149,14 @@ class ResearchEngine:
             review_candidates(inference["proposals"])
             # One bounded correction attempt, only after an explicit opposition.
             # Do not pass generated text or untrusted source instructions as feedback.
-            remaining = deadline - time.monotonic()
-            if (not proposals and any(item['check']['direction_check']['status'] == 'potential_opposition'
-                                      for item in rejected)
-                    and remaining >= 2 and not stopped()):
+            retry_timeout = None
+            if not proposals and any(item['check']['direction_check']['status'] == 'potential_opposition'
+                                     for item in rejected):
+                retry_timeout = inference_timeout(30)
+            if retry_timeout is not None:
                 first = {k:v for k,v in inference.items() if k != 'proposals'}
                 retry = suggest(run["question"], citations, retry_opposition=True,
-                                timeout_seconds=min(30, remaining - 1))
+                                timeout_seconds=retry_timeout)
                 review_candidates(retry['proposals'])
                 inference = {**retry, 'initial_attempt': first,
                              'retry': {'trigger': 'potential_opposition', 'attempts': 1,
