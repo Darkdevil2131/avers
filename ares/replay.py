@@ -74,7 +74,7 @@ def verify_findings(bundle):
     ) else None
     identity_verified = bool(recorded_hash and current_hash and recorded_hash == current_hash
                              and recorded_model.get('model') == RERANKER_MODEL)
-    identity_mismatch = bool(recorded_hash and current_hash and not identity_verified)
+    identity_mismatch = bool(recorded_hash and not identity_verified)
     return {
         'match': saved == current and not identity_mismatch,
         'saved_count': len(saved),

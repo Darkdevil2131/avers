@@ -130,6 +130,8 @@ def test_replay_checks_recorded_reranker_identity(tmp_path, monkeypatch):
     assert result['model_identity_verified'] is False
     assert result['match'] is False
     assert result['saved'] == result['rerun']
+    monkeypatch.setattr(DENSE, 'reranker_artifact_hash', None)
+    assert verify_findings(bundle)['match'] is False
 
 
 def test_model_snapshot_digest_includes_paths_and_bytes(tmp_path):
