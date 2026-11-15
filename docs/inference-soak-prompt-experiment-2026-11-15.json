@@ -1,0 +1,205 @@
+{
+  "model_sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+  "users": 3,
+  "rounds": 3,
+  "jobs": [
+    {
+      "user_index": 0,
+      "round": 1,
+      "status": "completed",
+      "queue_to_report_seconds": 10.62,
+      "submission_ms": 6.27,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 0,
+      "rejected_candidate_details": []
+    },
+    {
+      "user_index": 2,
+      "round": 1,
+      "status": "completed",
+      "queue_to_report_seconds": 20.11,
+      "submission_ms": 6.3,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increased after exposure to high humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation"
+          ]
+        }
+      ]
+    },
+    {
+      "user_index": 1,
+      "round": 1,
+      "status": "completed",
+      "queue_to_report_seconds": 30.36,
+      "submission_ms": 7.49,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increased after exposure to high humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation"
+          ]
+        }
+      ]
+    },
+    {
+      "user_index": 1,
+      "round": 2,
+      "status": "completed",
+      "queue_to_report_seconds": 11.27,
+      "submission_ms": 5.13,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increased after exposure to high humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation"
+          ]
+        }
+      ]
+    },
+    {
+      "user_index": 0,
+      "round": 2,
+      "status": "completed",
+      "queue_to_report_seconds": 21.24,
+      "submission_ms": 5.53,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 0,
+      "rejected_candidate_details": []
+    },
+    {
+      "user_index": 2,
+      "round": 2,
+      "status": "completed",
+      "queue_to_report_seconds": 31.57,
+      "submission_ms": 7.53,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increased after exposure to high humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation"
+          ]
+        }
+      ]
+    },
+    {
+      "user_index": 1,
+      "round": 3,
+      "status": "completed",
+      "queue_to_report_seconds": 11.13,
+      "submission_ms": 4.0,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increased after exposure to high humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation"
+          ]
+        }
+      ]
+    },
+    {
+      "user_index": 2,
+      "round": 3,
+      "status": "completed",
+      "queue_to_report_seconds": 21.13,
+      "submission_ms": 5.24,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increased after exposure to high humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation"
+          ]
+        }
+      ]
+    },
+    {
+      "user_index": 0,
+      "round": 3,
+      "status": "completed",
+      "queue_to_report_seconds": 30.38,
+      "submission_ms": 5.14,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 0,
+      "rejected_candidate_details": []
+    }
+  ],
+  "health_checks": 179,
+  "health_max_ms": 82.24,
+  "errors": [],
+  "all_jobs_completed": true,
+  "all_inferences_completed": true,
+  "scope": "Synthetic data, localhost HTTP, one worker and disposable SQLite.",
+  "limits": [
+    "No scientific validity assessment.",
+    "No production host, PostgreSQL, or always-on cost verification.",
+    "Memory usage is not measured by this test."
+  ],
+  "elapsed_seconds": 93.18
+}
