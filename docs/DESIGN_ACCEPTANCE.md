@@ -24,9 +24,13 @@ Use **Add a source → Upload a PDF** to attach a document you have permission t
 **Download replay bundle** saves the historical report, its cited source text,
 and recorded settings. Treat it as private research data. Run
 `python -m ares.replay ares-replay.json restored-report.md` to verify source
-hashes and spans and reconstruct the saved Markdown offline. The ordinary report
-download adds current retraction and review notices. The historical reconstruction
-does not rerun search, ranking, or model inference.
+hashes, citation and finding spans and reconstruct the saved Markdown offline.
+Add `--check-findings` to rerun extraction over the archived cited passages with
+the currently installed local models and compare ordered findings and methods.
+The command prints both selections and exits with an error if they differ. The
+original model artifacts are not verified by this comparison. The ordinary report
+download adds current retraction and review notices. Retrieval, external search,
+and hypothesis inference are not rerun by the historical reconstruction.
 
 Before publishing a proposal, the worker screens available literature titles. If
 external collection was requested and a search slot remains, the worker also

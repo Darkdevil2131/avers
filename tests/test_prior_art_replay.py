@@ -6,7 +6,7 @@ import sys
 import pytest
 from fastapi.testclient import TestClient
 
-from ares.replay import replay_markdown
+from ares.replay import replay_markdown, verify_findings
 from ares.providers import ProviderError
 from test_research import KEYS, client, project, run, source
 
@@ -81,12 +81,36 @@ def test_report_screens_literature_and_replays_saved_artifact(tmp_path, monkeypa
     altered['report']['citations'][0]['quote'] = 'different excerpt'
     with pytest.raises(ValueError, match='quote'):
         replay_markdown(altered)
+    altered = json.loads(archive.content)
+    altered['report']['findings'][0]['statement'] = 'Invented finding text'
+    with pytest.raises(ValueError, match='finding does not match'):
+        replay_markdown(altered)
 
     api.post(f'/projects/{pid}/sources/{original["id"]}/review', json={
         'status':'retracted','reason':'Synthetic test retraction',
     }).raise_for_status()
     assert api.get(route).json()['markdown'].startswith('> WARNING:')
     assert api.get(f'/projects/{pid}/runs/{rid}/replay.json').json() == bundle
+
+
+def test_replay_can_compare_extraction_and_exposes_changes(tmp_path, monkeypatch):
+    from ares.retrieval import DENSE
+
+    monkeypatch.delenv('ARES_REASONER_MODEL', raising=False)
+    monkeypatch.setattr(DENSE, 'rerank', lambda question, values: [1.0] * len(values))
+    api = client(tmp_path)
+    pid = project(api)
+    source(api, pid)
+    rid = run(api, pid)
+    bundle = api.get(f'/projects/{pid}/runs/{rid}/replay.json').json()
+    result = verify_findings(bundle)
+    assert result['match'] and result['saved_count'] > 0
+    assert result['model_identity_verified'] is False
+
+    monkeypatch.setattr(DENSE, 'rerank', lambda question, values: (_ for _ in ()).throw(RuntimeError('offline')))
+    result = verify_findings(bundle)
+    assert result['match'] is False
+    assert result['saved'][0]['method'] != result['rerun'][0]['method']
 
 
 @pytest.mark.parametrize('outcome,status', [('unavailable', 'unavailable'), ('identifiers_only', 'titles_unavailable')])

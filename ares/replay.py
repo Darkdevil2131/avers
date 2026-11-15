@@ -41,20 +41,61 @@ def replay_markdown(bundle):
             expected = expected[:2000]
         if reference['quote'] != expected:
             raise ValueError('Archived quote does not match the referenced source span.')
+    citations = {citation['label']: citation for citation in report['citations']}
+    for finding in report.get('findings', []):
+        citation = citations.get(finding['citation'])
+        if not citation or citation['source_id'] != finding['source_id']:
+            raise ValueError('Archived finding has no matching citation.')
+        start, end = finding['start_offset'], finding['end_offset']
+        if not citation['start_offset'] <= start < end <= citation['end_offset']:
+            raise ValueError('Archived finding falls outside its cited passage.')
+        source = sources[finding['source_id']]['text']
+        if source[start:end] != finding['statement']:
+            raise ValueError('Archived finding does not match its source span.')
     return export_markdown(bundle['saved_markdown'], report, [])
+
+
+def verify_findings(bundle):
+    """Rerun extraction over archived passages using the current local models."""
+    replay_markdown(bundle)
+    from .agents import extract
+
+    report = bundle['report']
+    original = report.get('findings', [])
+    rerun = extract(report['citations'], report['question'])
+    fields = ('citation', 'source_id', 'statement', 'start_offset', 'end_offset', 'method')
+    saved = [{key: item[key] for key in fields} for item in original]
+    current = [{key: item[key] for key in fields} for item in rerun]
+    return {
+        'match': saved == current,
+        'saved_count': len(saved),
+        'rerun_count': len(current),
+        'saved': saved,
+        'rerun': current,
+        'scope': 'Extraction from archived cited passages with current local models. Retrieval and reasoning are not rerun.',
+        'model_identity_verified': False,
+    }
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('bundle', type=Path)
     parser.add_argument('output', type=Path)
+    parser.add_argument('--check-findings', action='store_true',
+                        help='Compare current evidence extraction with the archived findings.')
     args = parser.parse_args()
     try:
         with args.bundle.open('rb') as stream:
             encoded = stream.read(MAX_BUNDLE_BYTES + 1)
         if len(encoded) > MAX_BUNDLE_BYTES:
             raise ValueError('Replay bundle exceeds size limit.')
-        rendered = replay_markdown(json.loads(encoded))
+        bundle = json.loads(encoded)
+        rendered = replay_markdown(bundle)
+        if args.check_findings:
+            comparison = verify_findings(bundle)
+            print(json.dumps(comparison, indent=2))
+            if not comparison['match']:
+                raise ValueError('Evidence extraction differs from the saved findings.')
         with args.output.open('x', encoding='utf-8') as output:
             output.write(rendered)
     except (OSError, TypeError, ValueError, KeyError, AttributeError) as exc:
