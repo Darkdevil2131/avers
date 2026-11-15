@@ -28,6 +28,10 @@ external JATS declaration while continuing to reject embedded DTDs and entities.
 Newly fetched articles compare reported PMC identifiers to the requested article.
 The report flags JATS documents that do not report a PMC identifier. This check
 does not identify separate articles that reuse the same underlying study.
+For newly collected JATS records, the article-level license, title, DOI and
+abstract come from the main article metadata. Permissions attached to figures or
+other nested material do not authorize collecting the main article. Separate
+rights within an article still require review before reusing individual content.
 
 ## Literature screening, table export and historical replay
 

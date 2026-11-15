@@ -88,15 +88,19 @@ def parse_jats(raw: bytes, pmcid: str):
     if any(identifier != pmcid for identifier in normalized_ids):
         raise DocumentIdentityError('Article PMC identifier does not match the requested document')
     identity_status = 'matched' if normalized_ids else 'not_reported'
-    licenses=root.findall('.//permissions/license')
+    # Figure, supplementary material and sub-article permissions may have
+    # different terms from the main article. Never use them as its license.
+    licenses=root.findall('./front/article-meta/permissions/license')
     links=[v for node in licenses for descendant in node.iter() for k,v in descendant.attrib.items() if k.endswith('href')]
     license_url=next((x for x in links if ALLOWED_LICENSE.fullmatch(x)),None)
     if license_url is None:
         raise UnsupportedLicense('Full-text license is not an explicitly supported CC BY, CC BY-SA or CC0 license')
-    title=text(root.find('.//article-title'))
+    title = text(root.find('./front/article-meta/title-group/article-title'))
+    if not title:
+        title = text(root.find('./front/article-meta/article-title')) or pmcid
     chunks=[];locations=[];offset=0
     # Preserve normalized section text with location paths; original XML hash accompanies it.
-    parts = root.findall('.//abstract') + root.findall('./body')
+    parts = root.findall('./front/article-meta/abstract') + root.findall('./body')
     for part in parts:
         for node in part.iter():
             if node.tag not in {'p','table-wrap'}:continue
@@ -106,7 +110,7 @@ def parse_jats(raw: bytes, pmcid: str):
             chunks.append(value);locations.append({'id':node.get('id'),'kind':node.tag,'start':offset,'end':offset+len(value)})
             offset+=len(value)+2
     if not chunks:raise ValueError('No article body or abstract text')
-    doi=next((text(n) for n in root.findall('.//article-id') if n.get('pub-id-type')=='doi'),None)
+    doi=next((text(n) for n in root.findall('./front/article-meta/article-id') if n.get('pub-id-type')=='doi'),None)
     refs=[]
     for node in root.findall('.//ref//pub-id'):
         if node.get('pub-id-type')=='pmcid' and re.fullmatch(r'PMC\d+',text(node)):refs.append(text(node))

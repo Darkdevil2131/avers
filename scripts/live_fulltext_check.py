@@ -1,7 +1,7 @@
 """Live public API contract test. Logs provenance, never claims scientific validation."""
 import base64,hashlib,json,os
 from datetime import datetime,timezone
-from ares.providers import EuropePMC
+from ares.providers import EuropePMC,ProviderError
 provider=EuropePMC();results=[]
 topic_query = '"humidity" AND "coating" AND "stability"'
 try:
@@ -20,7 +20,10 @@ for pmcid in ['PMC4383902','PMC5753258','PMC13676768']:
         assert metadata['identity_status'] in {'matched', 'not_reported'}
         results.append({'pmcid':pmcid,'status':'passed','provider':document['origin'],'license':document['license_status'],'identity_status':metadata['identity_status'],'characters':len(document['text']),'locations':len(metadata['locations']),'original_sha256':metadata['original_sha256']})
     except Exception as exc:
-        results.append({'pmcid':pmcid,'status':'failed','error':str(exc),'cause':str(exc.__cause__)[:200]})
+        failure = {'pmcid':pmcid,'status':'failed','error_type':type(exc).__name__}
+        if isinstance(exc, ProviderError):
+            failure['attempts'] = exc.attempts
+        results.append(failure)
 record={'checked_at':datetime.now(timezone.utc).isoformat(),'checks':results,'passed':all(x['status']=='passed' for x in results)}
 print(json.dumps(record,indent=2))
 if os.environ.get('GITHUB_STEP_SUMMARY'):

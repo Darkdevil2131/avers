@@ -34,6 +34,31 @@ def test_reference_pmc_identifier_does_not_prove_article_identity():
     assert parse_jats(raw, 'PMC123')['document']['identity_status'] == 'not_reported'
 
 
+def test_nested_license_does_not_authorize_main_article():
+    from ares.documents import UnsupportedLicense
+
+    main_without_license = XML.replace(
+        b'<permissions><license><ext-link xlink:href="https://creativecommons.org/licenses/by/4.0/"/></license></permissions>', b'')
+    figure_license = (b'<fig><permissions><license><ext-link '
+                      b'xlink:href="https://creativecommons.org/licenses/by/4.0/"/>'
+                      b'</license></permissions></fig>')
+    raw = main_without_license.replace(b'</sec>', figure_license + b'</sec>')
+    with pytest.raises(UnsupportedLicense):
+        parse_jats(raw, 'PMC123')
+
+
+def test_subarticle_metadata_does_not_override_main_article():
+    nested = (b'<sub-article><front-stub><article-id pub-id-type="doi">10.1234/other</article-id>'
+              b'<article-title>Different article</article-title>'
+              b'<abstract><p>Unrelated abstract must not enter this article.</p></abstract>'
+              b'</front-stub></sub-article>')
+    raw = XML.replace(b'</article>', nested + b'</article>')
+    doc = parse_jats(raw, 'PMC123')
+    assert doc['title'] == 'Humidity experiment'
+    assert doc['study_id'] == 'PMC123'
+    assert 'Unrelated abstract' not in doc['text']
+
+
 def test_jats_standard_doctype_preserves_original_and_blocks_entities():
     import base64
     from hashlib import sha256
