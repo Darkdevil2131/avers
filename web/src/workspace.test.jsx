@@ -175,7 +175,8 @@ test('collection report identifies provider failures and successful fallbacks', 
   if (url.endsWith('/report')) return reply({
    question:run.question, summary:'Review evidence.', assessment:'inconclusive',
    outdated_sources:[], citations:[], limitations:[],
-   collection:{status:'partial', metadata_records:1, fulltext_stored:1, scope:'Bounded', queries:[],
+   collection:{status:'partial', metadata_records:1, fulltext_stored:1, scope:'Bounded',
+    queries:[{strategy:'primary_evidence',query:'coating humidity',provider:'NCBI PMC',fallback_used:true}],
     errors:[{stage:'fulltext', pmcid:'PMC12', message:'Could not collect.', attempts:[
      {provider:'Europe PMC', reason:'timeout'}, {provider:'NCBI BioC', reason:'unsupported_license'}]}],
     fallbacks:[{pmcid:'PMC42', attempts:[{provider:'Europe PMC', reason:'not_found'},
@@ -191,4 +192,7 @@ test('collection report identifies provider failures and successful fallbacks', 
  expect(screen.getByText('Europe PMC: timeout')).toBeTruthy();
  expect(screen.getByText('NCBI BioC: unsupported license')).toBeTruthy();
  expect(screen.getByText('PMC42 collected using a fallback provider.')).toBeTruthy();
+ await user.click(screen.getByText('Search strategy and queries'));
+ expect(screen.getByText('Metadata provider: NCBI PMC')).toBeTruthy();
+ expect(screen.getByText('Europe PMC was unavailable or returned an invalid response; the fallback was used.')).toBeTruthy();
 });

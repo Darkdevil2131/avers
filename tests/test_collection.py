@@ -164,6 +164,49 @@ def test_cached_results_are_not_mutated_by_broadened_search():
     assert provider.opener.calls == 1
 
 
+def test_search_provenance_distinguishes_empty_primary_and_fallback(monkeypatch):
+    provider = EuropePMC()
+    provider.opener = Opener({'resultList': {'result': []}})
+    records, provenance = provider.search_with_provenance('coating')
+    assert records == [] and provenance == {'provider': 'Europe PMC', 'fallback_used': False}
+    cached, provenance = provider.search_with_provenance('coating')
+    assert cached == [] and provenance['provider'] == 'Europe PMC'
+    assert provider.opener.calls == 1
+
+    provider = EuropePMC()
+    provider.opener = Opener({'resultList': {'result': None}})
+    monkeypatch.setattr(provider, 'ncbi_search', lambda query, limit: [])
+    records, provenance = provider.search_with_provenance('coating')
+    assert records == [] and provenance == {
+        'provider': 'NCBI PMC', 'fallback_used': True,
+        'primary_status': 'unavailable_or_invalid_response',
+    }
+    assert provider.search('coating') == []  # Existing callers still receive a list.
+    with pytest.raises(ProviderError):
+        provider.search_titles('coating')
+
+
+def test_fallback_metadata_provider_is_recorded_in_report_and_events(tmp_path, monkeypatch):
+    provider = EuropePMC()
+    provider.opener = Opener({'resultList': {'result': None}})
+    monkeypatch.setattr(provider, 'ncbi_search', lambda query, limit: [{
+        'url': 'https://example.org/ncbi', 'title': 'Humidity coating metadata',
+        'text': 'Humidity coating metadata', 'license_status': 'synthetic fixture',
+        'origin': 'ncbi_metadata', 'is_open_access': False,
+    }])
+    api = client(tmp_path, provider=provider)
+    pid = project(api)
+    rid = run(api, pid, external=True)
+    route = f'/projects/{pid}/runs/{rid}'
+    report = api.get(route + '/report').json()
+    query = report['collection']['queries'][0]
+    assert query['provider'] == 'NCBI PMC' and query['fallback_used'] is True
+    assert 'Metadata provider: NCBI PMC' in report['markdown']
+    events = api.get(route + '/events').json()
+    completed = next(event for event in events if event['stage'] == 'external_search_completed')
+    assert completed['payload']['provider'] == 'NCBI PMC'
+
+
 @pytest.mark.parametrize('query,limit', [('',8), ('x',0), ('x',11), ('x',True), (None,8)])
 def test_invalid_search_input_does_not_make_requests(query, limit):
     provider = EuropePMC()

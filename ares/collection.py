@@ -72,10 +72,17 @@ class EvidenceCollector:
             self.audit['bounded'] = True
             return
         self.event('planner_decision', {'strategy': strategy, 'query': query, 'reason': reason})
-        self.audit['queries'].append({'query': query, 'strategy': strategy, 'reason': reason})
+        entry = {'query': query, 'strategy': strategy, 'reason': reason}
+        self.audit['queries'].append(entry)
         search_succeeded = True
         try:
-            records = list(self.provider.search(query))
+            search_with_provenance = getattr(self.provider, 'search_with_provenance', None)
+            if callable(search_with_provenance):
+                found, provenance = search_with_provenance(query)
+                records = list(found)
+                entry.update(provenance)
+            else:
+                records = list(self.provider.search(query))
         except ProviderError as exc:
             search_succeeded = False
             message = str(exc)[:300]
@@ -97,7 +104,7 @@ class EvidenceCollector:
             self.records.extend(fresh)
         self.audit['metadata_records'] = len(self.urls)
         if search_succeeded:
-            self.event('external_search_completed', {'provider': 'Europe PMC', 'count': len(fresh),
+            self.event('external_search_completed', {'provider': entry.get('provider', 'not recorded'), 'count': len(fresh),
                                                      'content': 'metadata', 'strategy': strategy})
         roots = list(dict.fromkeys(
             record['pmcid'] for record in records if record.get('is_open_access') and record.get('pmcid')
