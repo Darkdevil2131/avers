@@ -1,0 +1,232 @@
+{
+  "model_sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+  "users": 3,
+  "rounds": 3,
+  "jobs": [
+    {
+      "user_index": 2,
+      "round": 1,
+      "status": "completed",
+      "queue_to_report_seconds": 13.93,
+      "submission_ms": 5.91,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increases with higher humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation",
+            "The generated mechanism explicitly disclaims its own evidential support"
+          ]
+        }
+      ]
+    },
+    {
+      "user_index": 1,
+      "round": 1,
+      "status": "completed",
+      "queue_to_report_seconds": 24.91,
+      "submission_ms": 6.37,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increases with higher humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation",
+            "The generated mechanism explicitly disclaims its own evidential support"
+          ]
+        }
+      ]
+    },
+    {
+      "user_index": 0,
+      "round": 1,
+      "status": "completed",
+      "queue_to_report_seconds": 32.62,
+      "submission_ms": 8.26,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increases with higher humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation"
+          ]
+        }
+      ]
+    },
+    {
+      "user_index": 1,
+      "round": 2,
+      "status": "completed",
+      "queue_to_report_seconds": 11.24,
+      "submission_ms": 3.59,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increases with higher humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation",
+            "The generated mechanism explicitly disclaims its own evidential support"
+          ]
+        }
+      ]
+    },
+    {
+      "user_index": 0,
+      "round": 2,
+      "status": "completed",
+      "queue_to_report_seconds": 19.56,
+      "submission_ms": 4.78,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increases with higher humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation"
+          ]
+        }
+      ]
+    },
+    {
+      "user_index": 2,
+      "round": 2,
+      "status": "completed",
+      "queue_to_report_seconds": 29.82,
+      "submission_ms": 5.08,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increases with higher humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation",
+            "The generated mechanism explicitly disclaims its own evidential support"
+          ]
+        }
+      ]
+    },
+    {
+      "user_index": 1,
+      "round": 3,
+      "status": "completed",
+      "queue_to_report_seconds": 11.78,
+      "submission_ms": 4.51,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increases with higher humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation",
+            "The generated mechanism explicitly disclaims its own evidential support"
+          ]
+        }
+      ]
+    },
+    {
+      "user_index": 2,
+      "round": 3,
+      "status": "completed",
+      "queue_to_report_seconds": 22.2,
+      "submission_ms": 5.9,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increases with higher humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation",
+            "The generated mechanism explicitly disclaims its own evidential support"
+          ]
+        }
+      ]
+    },
+    {
+      "user_index": 0,
+      "round": 3,
+      "status": "completed",
+      "queue_to_report_seconds": 29.92,
+      "submission_ms": 6.12,
+      "reasoner_status": "completed",
+      "reasoner_reason": null,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "citation_count": 1,
+      "citation_integrity": true,
+      "assessment": "inconclusive",
+      "rejected_candidates": 1,
+      "rejected_candidate_details": [
+        {
+          "statement": "Coating adhesion increases with higher humidity.",
+          "reasons": [
+            "Proposed direction opposes its cited observation without a validated reconciliation"
+          ]
+        }
+      ]
+    }
+  ],
+  "health_checks": 179,
+  "health_max_ms": 88.52,
+  "errors": [],
+  "all_jobs_completed": true,
+  "all_inferences_completed": true,
+  "scope": "Synthetic data, localhost HTTP, one worker and disposable SQLite.",
+  "limits": [
+    "No scientific validity assessment.",
+    "No production host, PostgreSQL, or always-on cost verification.",
+    "Memory usage is not measured by this test."
+  ],
+  "elapsed_seconds": 93.06
+}
