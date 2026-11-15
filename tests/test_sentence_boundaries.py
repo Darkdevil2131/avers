@@ -39,39 +39,3 @@ def test_context_relevance_breaks_sentence_only_tie_without_truth_claim(monkeypa
     assert findings[0]['source_id']=='strong'
     assert findings[0]['context_verified'] is False
     assert findings[0]['status']=='candidate'
-
-
-def test_neighbor_ranking_keeps_exact_candidate_offsets(monkeypatch):
-    setup = 'We exposed a protective coating to high humidity.'
-    result = 'These samples lost adhesion after seven days.'
-    unrelated = 'These samples received identifiers before the experiment.'
-    text = f'{setup} {result}\n{unrelated}'
-    batches = []
-
-    def score(question, texts):
-        batches.append(texts)
-        return [3.0] if len(batches) == 2 else [1.0, -1.0]
-
-    monkeypatch.setattr(DENSE, 'rerank', score)
-    citation = {'source_id': 'coating', 'label': 'S1', 'quote': text, 'start_offset': 10}
-    first, other = extract([citation], 'Does humidity affect the coating?')
-    assert batches == [[setup, result], [f'{result} {setup}']]
-    assert first['statement'] == result
-    assert first['neighbor_relevance_score'] == 3.0
-    assert text[first['start_offset'] - 10:first['end_offset'] - 10] == result
-    assert not first['context_verified'] and other['statement'] == setup
-
-
-def test_failed_context_scoring_keeps_direct_matches_only(monkeypatch):
-    setup = 'Humidity reduced coating stability during a chamber test.'
-    result = 'These samples lost adhesion after seven days.'
-
-    def score(question, texts):
-        if len(texts) == 1:
-            raise RuntimeError('Context reranking unavailable')
-        return [1.0, 10.0]
-
-    monkeypatch.setattr(DENSE, 'rerank', score)
-    citation = {'source_id': 'coating', 'label': 'S1', 'quote': f'{setup} {result}', 'start_offset': 0}
-    direct, = extract([citation], 'Does humidity affect the coating?')
-    assert direct['statement'] == setup

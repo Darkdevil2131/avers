@@ -63,3 +63,37 @@ archive's SHA-256 is recorded in the results file.
 python -c 'import json; d=json.load(open("docs/scifact-distinct-claims-2026-11-14.json")); print(json.dumps({"results": [{"claim_id": i} for i in d["excluded_prior_claim_ids"]]}))' > /tmp/ares-eval-excluded.json
 ARES_EVAL_SEED=20261114 ARES_EVAL_EXCLUDE=/tmp/ares-eval-excluded.json ARES_EVAL_OUTPUT=/tmp/ares-eval-results.json PYTHONPATH=. python scripts/evaluate_scifact.py
 ```
+
+## November 15 paired check of previous-sentence context
+
+[Per-claim results](scifact-context-comparison-2026-11-15.json) compare the current
+selector with a candidate that scored an exact sentence alongside the preceding
+sentence when the wording referred back to it. The two selectors received the
+same retrieved passages from each corpus and used the same local reranker. Every
+selected span was checked against its cited text.
+
+Three fixed-seed samples of 1,000 documents yielded 27 distinct SciFact
+development claims after excluding 111 already measured claim IDs and any claims
+reused across samples. Each eligible claim had all annotated evidence documents
+within its sampled corpus. These public labels cover evidence selection in an
+abstract corpus. Expert judgments about contradictions and abstentions remain open.
+
+| Measure | Current | Candidate |
+| --- | --- | --- |
+| First choice matches an annotated rationale | 16/27 | 16/27 |
+| At least one choice matches an annotated rationale | 22/27 | 22/27 |
+| Matching rationales across selected candidates | 29/81 | 29/81 |
+
+All 27 claims had their annotated evidence documents in the top eight retrieved
+passages, while five yielded no matching rationale among the selected sentences.
+Every claim had the same first-choice match outcome in both runs. The release
+keeps the current selector because scoring additional context produced no gain
+on this comparison.
+
+To reproduce, use a worktree at the `experimental_revision` in the results file,
+prepare the recorded model snapshots, and run `scripts/evaluate_scifact.py` for
+each entry in `cohorts`. Set `ARES_EVAL_BEFORE` to `baseline_revision`,
+`ARES_EVAL_SEED` to the entry's `document_seed`, and `ARES_EVAL_EXCLUDE` to a JSON
+file containing `{"results": [{"claim_id": ...}]}` for its `excluded_prior_claim_ids`.
+Set `ARES_EVAL_OUTPUT` to a scratch output path and run with `PYTHONPATH=.`. The
+dataset archive SHA-256 is recorded with the results.
