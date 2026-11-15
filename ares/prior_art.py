@@ -1,10 +1,9 @@
 """Bounded topic search and local screening of literature titles."""
 
-import re
-
 from .agents import terms
 from .collection import MAX_SEARCHES, question_keywords
 from .providers import ProviderError
+from .study_identifiers import study_identifier
 
 GENERIC = set('changing reported measured response otherwise matched conditions may change test testable study proposal effect'.split())
 
@@ -53,10 +52,10 @@ def screen_prior_art(proposal, question, citations, records, collection, search=
     anchors.discard(None)
     anchor_ids = {citation['study_id'] for citation in citations
                   if citation['source_id'] in anchors and citation.get('study_id')}
-    anchor_ids = {_identity(item) for item in anchor_ids}
+    anchor_ids = {study_identifier(item) for item in anchor_ids}
     by_identity = {}
     for record in [*citations, *records]:
-        identity = _identity(record.get('study_id') or record['url'])
+        identity = study_identifier(record.get('study_id') or record['url'])
         title_terms = terms(record['title']) - GENERIC
         overlap = title_terms & candidate
         if identity in anchor_ids or record.get('source_id') in anchors or len(overlap) < 2:
@@ -80,7 +79,3 @@ def screen_prior_art(proposal, question, citations, records, collection, search=
         'topic_search': search or {'status': 'not_recorded'},
         'novelty_verified': False,
     }
-
-
-def _identity(value):
-    return re.sub(r'^(?:https?://(?:dx\.)?doi\.org/|doi:\s*)', '', value.strip(), flags=re.I).casefold()

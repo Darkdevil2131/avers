@@ -8,8 +8,8 @@ from test_research import client, project, run
 def review(left,right,same_study=False,same_source=False):
     findings=[{'source_id':'a','citation':'S1','statement':left},
               {'source_id':'a' if same_source else 'b','citation':'S2','statement':right}]
-    citations=[{'label':'S1','url':'https://example.org/a','study_id':'study-a'},
-               {'label':'S2','url':'https://example.org/b','study_id':'study-a' if same_study else 'study-b'}]
+    citations=[{'label':'S1','url':'https://example.org/a','study_id':'PMC1234'},
+               {'label':'S2','url':'https://example.org/b','study_id':'https://pmc.ncbi.nlm.nih.gov/articles/PMC1234/' if same_study else 'study-b'}]
     return critique(findings,citations)
 
 

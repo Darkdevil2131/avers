@@ -3,12 +3,23 @@ Never imports gold labels into retrieval or training. Does not validate scientif
 """
 import hashlib,io,json,random,tarfile,time,urllib.request,os
 from pathlib import Path
+import subprocess
+from types import ModuleType
 from ares.database import Database
 from ares.retrieval import hybrid_search
 from ares.agents import extract
 
 SEED=int(os.environ.get('ARES_EVAL_SEED','20261111'))
 OUTPUT=os.environ.get('ARES_EVAL_OUTPUT','docs/scifact-evaluation.json')
+before_revision = os.environ.get('ARES_EVAL_BEFORE')
+if before_revision:
+    before_revision = subprocess.check_output(
+        ['git', 'rev-parse', '--verify', '--end-of-options', before_revision + '^{commit}'], text=True,
+    ).strip()
+    before = ModuleType('ares._benchmark_agents')
+    before.__package__ = 'ares'
+    original = subprocess.check_output(['git', 'show', f'{before_revision}:ares/agents.py'])
+    exec(compile(original, f'{before_revision}:ares/agents.py', 'exec'), before.__dict__)
 ROOT=Path('state/scifact-evaluation-'+str(SEED));ROOT.mkdir(parents=True,exist_ok=True)
 archive=ROOT/'data.tar.gz'
 if not archive.exists():
@@ -41,6 +52,23 @@ with dbs.connect() as db:
     count=db.execute('SELECT count(*) FROM passages').fetchone()[0]
 print(json.dumps({'phase':'index','documents':len(corpus),'passages':count,'queries':len(claims)}),flush=True)
 results=[];start=time.monotonic()
+
+
+def score_candidates(candidates, cites, rationale):
+    by_label = {cite['label']: cite for cite in cites}
+    matches = []
+    for candidate in candidates:
+        cite = by_label[candidate['citation']]
+        left = candidate['start_offset'] - cite['start_offset']
+        right = candidate['end_offset'] - cite['start_offset']
+        if not 0 <= left < right <= len(cite['quote']) or cite['quote'][left:right] != candidate['statement']:
+            raise ValueError('Candidate span does not match its source passage.')
+        targets = rationale.get(lookup[candidate['source_id']], [])
+        matches.append(any(candidate['statement'] in sentence or sentence in candidate['statement'] for sentence in targets))
+    return {'extracted_candidates': len(matches), 'rationale_matching_candidates': sum(matches),
+            'first_candidate_matches_rationale': bool(matches and matches[0])}
+
+
 with dbs.connect() as db:
     for index,c in enumerate(claims):
         gold=set(c['evidence'])
@@ -52,15 +80,15 @@ with dbs.connect() as db:
         for doc_id,groups in c['evidence'].items():
             indices=set(n for group in groups for n in group['sentences'])
             rationale[doc_id]=[documents[doc_id]['abstract'][n] for n in indices]
-        correct=0;top1=False
-        for candidate_index,f in enumerate(candidates):
-            targets=rationale.get(lookup[f['source_id']],[])
-            if any(f['statement'] in sentence or sentence in f['statement'] for sentence in targets):
-                correct+=1
-                if candidate_index==0:top1=True
+        outcome = score_candidates(candidates, cites, rationale)
         results.append({'claim_id':c['id'],'gold_documents':sorted(gold),'lexical_recall8':len({lookup[p['source_id']] for p in lexical}&gold)/len(gold),
                         'hybrid_recall8':len({lookup[p['source_id']] for p in passages}&gold)/len(gold),
-                        'retrieval_mode':detail['mode'],'reranked':detail.get('reranked',False),'extracted_candidates':len(candidates),'rationale_matching_candidates':correct,'first_candidate_matches_rationale':top1})
+                        'retrieval_mode':detail['mode'],'reranked':detail.get('reranked',False),**outcome})
+        if before_revision:
+            if detail['mode'] != 'hybrid' or not detail.get('reranked'):
+                raise RuntimeError('Paired evaluation requires prepared dense models and sentence reranking.')
+            previous = before.extract(cites, c['claim'])
+            results[-1]['before'] = score_candidates(previous, cites, rationale)
         print(json.dumps({'phase':'query','done':index+1,'total':len(claims)}),flush=True)
 summary={'dataset':'SciFact development split restricted to independently preselected 1000-document corpus',
  'source':'https://github.com/allenai/scifact','license':'https://github.com/allenai/scifact/blob/master/LICENSE.md',
@@ -70,5 +98,7 @@ summary={'dataset':'SciFact development split restricted to independently presel
  'lexical_macro_recall8':sum(x['lexical_recall8'] for x in results)/len(results),'hybrid_macro_recall8':sum(x['hybrid_recall8'] for x in results)/len(results),
  'candidate_rationale_precision':sum(x['rationale_matching_candidates'] for x in results)/max(1,sum(x['extracted_candidates'] for x in results)),
  'first_candidate_rationale_accuracy':sum(x['first_candidate_matches_rationale'] for x in results)/len(results),'hybrid_active_queries':sum(x['retrieval_mode']=='hybrid' for x in results),'reranked_queries':sum(x['reranked'] for x in results),'seconds':time.monotonic()-start,'results':results}
+if before_revision:
+    summary['before_revision'] = before_revision
 Path(OUTPUT).write_text(json.dumps(summary,indent=2))
 print(json.dumps({k:v for k,v in summary.items() if k!='results'},indent=2),flush=True)

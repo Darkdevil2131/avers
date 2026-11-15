@@ -2,6 +2,7 @@ import re
 from collections import Counter
 from .evidence import compare_reviewed_findings
 from .exposure import compare_exposure, extract_exposure
+from .study_identifiers import study_identifier
 from .text_spans import sentence_spans
 WORDS=re.compile(r'[A-Za-z][A-Za-z-]{2,}')
 STOP=set('the and with from that this were was are for not but study studies results effect effects'.split())
@@ -58,6 +59,7 @@ def extract(citations,question):
 def critique(findings,citations,reviewed_contexts=None):
     pairs=[]
     sources={c['label']:c for c in citations}
+    identities = {label: study_identifier(c.get('study_id') or c['url']) for label, c in sources.items()}
     for index,left in enumerate(findings):
         for right in findings[index+1:]:
             if left['source_id']==right['source_id']:continue
@@ -68,9 +70,8 @@ def critique(findings,citations,reviewed_contexts=None):
             opposing=direction['status']=='potential_opposition'
             negated=negative(left['statement'])!=negative(right['statement'])
             if overlap>=.35 and (opposing or negated):
-                left_source=sources.get(left['citation'],{})
-                right_source=sources.get(right['citation'],{})
-                same_study=bool(left_source.get('study_id') and left_source.get('study_id')==right_source.get('study_id'))
+                left_identity = identities.get(left['citation'])
+                same_study = bool(left_identity and left_identity == identities.get(right['citation']))
                 context = compare_reviewed_findings(left, right, reviewed_contexts or {})
                 pairs.append({'left':left['citation'],'right':right['citation'],'state':'potential_disagreement',
                               'reason':('Related wording with opposing direction words' if opposing else 'Related wording with different negation')+'; context is not verified',
@@ -85,7 +86,8 @@ def critique(findings,citations,reviewed_contexts=None):
                                                   'Are these independent studies or multiple reports of the same study?'],
                               'context_verified':False,'automatic_verdict':False})
     groups={}
-    for c in citations:groups.setdefault(c.get('study_id') or c['url'],[]).append(c['label'])
+    for label, identity in identities.items():
+        groups.setdefault(identity, []).append(label)
     return {'potential_disagreements':pairs[:12],'study_identifier_groups':list(groups.values()),
             'independence_verified':False,'missing_checks':['Full study context','Risk of bias','Independent study identity','Expert scientific appraisal'],
             'decision':'abstain_from_scientific_verdict','reason':'Extractive candidates and retrieval scores do not validate scientific support'}
