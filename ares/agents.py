@@ -166,6 +166,40 @@ def propose_exposure_test(findings, criticism):
     return None
 
 
+_DIRECTIONAL_RELATIONSHIP = re.compile(
+    r'(?P<outcome>[a-z][a-z -]*?) (?:would )?'
+    r'(?P<outcome_change>increase[sd]?|decrease[sd]?) (?:when|as) '
+    r'(?P<exposure>[a-z][a-z -]*?) (?P<exposure_change>increase[sd]?|decrease[sd]?)\.?'
+)
+_AMBIGUOUS_SUBJECT = re.compile(
+    r"\b(?:and|or|when|as|if|only|unless|before|after|during|no|not|never|without|"
+    r"would|could|should|might|may|will|can|must)\b"
+)
+
+
+def _directional_relationship(text):
+    """Parse only simple outcome-change as exposure-change statements."""
+    match = _DIRECTIONAL_RELATIONSHIP.fullmatch(' '.join(text.lower().split()))
+    if match is None:
+        return None
+    outcome = match['outcome'].removeprefix('the ').strip()
+    exposure = match['exposure'].removeprefix('the ').strip()
+    if outcome == exposure or any(_AMBIGUOUS_SUBJECT.search(name) for name in (outcome, exposure)):
+        return None
+    same_direction = match['outcome_change'].startswith('increase') == match['exposure_change'].startswith('increase')
+    return (outcome, exposure), same_direction
+
+
+def _falsification_status(statement, falsification):
+    prediction = _directional_relationship(statement)
+    observation = _directional_relationship(falsification)
+    if prediction is None or observation is None or prediction[0] != observation[0]:
+        return 'requires_review'
+    if prediction[1] == observation[1]:
+        return 'restates_directional_relationship'
+    return 'opposes_directional_relationship'
+
+
 def proposal_critic(proposal):
     """Reject simple observable inconsistencies; passing is not scientific validation."""
     hypothesis=proposal.get('statement','').lower()
@@ -208,7 +242,11 @@ def proposal_critic(proposal):
         reasons.append('Proposed direction opposes its cited observation without a validated reconciliation')
     if any(x in mechanism for x in ('not supported by the evidence','contradicts the evidence')):
         reasons.append('The generated mechanism explicitly disclaims its own evidential support')
+    falsification_status = _falsification_status(hypothesis, proposal.get('falsification', ''))
+    if falsification_status == 'restates_directional_relationship':
+        reasons.append('The proposed falsifier restates the hypothesis’s directional relationship')
     return {'accepted_as_candidate':not reasons,'reasons':reasons,'scientific_validation':False,
+            'falsification_check':{'status':falsification_status, 'context_verified':False},
             'direction_check':{'status':'potential_opposition' if opposition else 'requires_review' if not a or not b or shared<.3 or distinct_levels else 'no_opposition_detected',
                                'hypothesis_basis':a_reason,'evidence_basis':b_reason,
                                'context_verified':False,
