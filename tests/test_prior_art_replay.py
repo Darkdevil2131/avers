@@ -113,6 +113,38 @@ def test_replay_can_compare_extraction_and_exposes_changes(tmp_path, monkeypatch
     assert result['saved'][0]['method'] != result['rerun'][0]['method']
 
 
+def test_replay_checks_recorded_reranker_identity(tmp_path, monkeypatch):
+    from ares.retrieval import DENSE
+
+    monkeypatch.delenv('ARES_REASONER_MODEL', raising=False)
+    monkeypatch.setattr(DENSE, 'rerank', lambda question, values: [1.0] * len(values))
+    monkeypatch.setattr(DENSE, 'reranker_artifact_hash', 'a' * 64)
+    api = client(tmp_path)
+    pid = project(api)
+    source(api, pid)
+    rid = run(api, pid)
+    bundle = api.get(f'/projects/{pid}/runs/{rid}/replay.json').json()
+    assert verify_findings(bundle)['model_identity_verified'] is True
+    monkeypatch.setattr(DENSE, 'reranker_artifact_hash', 'b' * 64)
+    result = verify_findings(bundle)
+    assert result['model_identity_verified'] is False
+    assert result['match'] is False
+    assert result['saved'] == result['rerun']
+    monkeypatch.setattr(DENSE, 'reranker_artifact_hash', None)
+    assert verify_findings(bundle)['match'] is False
+
+
+def test_model_snapshot_digest_includes_paths_and_bytes(tmp_path):
+    from ares.retrieval import artifact_digest
+
+    (tmp_path / 'model.onnx').write_bytes(b'fixture weights')
+    (tmp_path / 'tokenizer.json').write_text('fixture tokenizer')
+    first = artifact_digest(tmp_path)
+    assert artifact_digest(tmp_path) == first
+    (tmp_path / 'tokenizer.json').write_text('changed tokenizer')
+    assert artifact_digest(tmp_path) != first
+
+
 @pytest.mark.parametrize('outcome,status', [('unavailable', 'unavailable'), ('identifiers_only', 'titles_unavailable')])
 def test_topic_search_reports_missing_titles(tmp_path, monkeypatch, outcome, status):
     monkeypatch.delenv('ARES_REASONER_MODEL', raising=False)

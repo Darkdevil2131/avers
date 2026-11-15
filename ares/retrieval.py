@@ -5,7 +5,26 @@ from pathlib import Path
 import threading
 
 MODEL='sentence-transformers/all-MiniLM-L6-v2'
+RERANKER_MODEL='Xenova/ms-marco-MiniLM-L-6-v2'
 MAX_PASSAGES=10000
+
+
+def artifact_digest(directory):
+    """Hash relative paths and bytes of the loaded model snapshot."""
+    root = Path(directory)
+    digest = hashlib.sha256()
+    files = sorted(path for path in root.rglob('*') if path.is_file())
+    if not files:
+        raise ValueError('Model snapshot contains no files')
+    for path in files:
+        name = path.relative_to(root).as_posix().encode('utf-8')
+        digest.update(len(name).to_bytes(8, 'big'))
+        digest.update(name)
+        digest.update(path.stat().st_size.to_bytes(8, 'big'))
+        with path.open('rb') as stream:
+            for block in iter(lambda: stream.read(1024 * 1024), b''):
+                digest.update(block)
+    return digest.hexdigest()
 
 class DenseIndex:
     def __init__(self):
@@ -13,6 +32,7 @@ class DenseIndex:
         self.lock=threading.RLock()
         self.error=None
         self.reranker=None
+        self.reranker_artifact_hash=None
         self.artifact_hash=None
     def load(self):
         with self.lock:
@@ -41,7 +61,10 @@ class DenseIndex:
         with self.lock:
             if self.reranker is None:
                 from fastembed.rerank.cross_encoder import TextCrossEncoder
-                self.reranker=TextCrossEncoder('Xenova/ms-marco-MiniLM-L-6-v2',cache_dir=os.environ.get('ARES_MODEL_CACHE','state/models'),threads=2,local_files_only=True)
+                reranker=TextCrossEncoder(RERANKER_MODEL,cache_dir=os.environ.get('ARES_MODEL_CACHE','state/models'),threads=2,local_files_only=True)
+                digest = artifact_digest(reranker.model._model_dir)
+                self.reranker = reranker
+                self.reranker_artifact_hash = digest
             return list(self.reranker.rerank(query,texts,batch_size=8))
 
 DENSE=DenseIndex()
