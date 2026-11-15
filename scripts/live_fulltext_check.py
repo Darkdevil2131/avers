@@ -3,6 +3,13 @@ import base64,hashlib,json,os
 from datetime import datetime,timezone
 from ares.providers import EuropePMC
 provider=EuropePMC();results=[]
+topic_query = '"humidity" AND "coating" AND "stability"'
+try:
+    titles = provider.search_titles(topic_query)
+    assert titles and all(item['origin'] == 'europepmc_metadata' and item['title'] for item in titles)
+    results.append({'scope': 'prior-art title search', 'status': 'passed', 'titles': len(titles), 'query': topic_query})
+except Exception as exc:
+    results.append({'scope': 'prior-art title search', 'status': 'failed', 'error': str(exc), 'cause': str(exc.__cause__)[:200]})
 for pmcid in ['PMC4383902','PMC5753258']:
     try:
         document=provider.fulltext(pmcid)

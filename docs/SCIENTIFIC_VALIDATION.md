@@ -33,3 +33,33 @@ ARES_EVAL_SEED=20261112 ARES_EVAL_EXCLUDE=docs/scifact-evaluation.json ARES_EVAL
 ## Subsequent extraction revision
 
 See IMPROVEMENTS_2026_11_12.md for paired before/after results and retained failures. First-candidate matches rose modestly, but overall candidate precision fell on the new 24-claim sample. Earlier measurements above describe the earlier pipeline and remain preserved. The system still lacks validated scientific judgments.
+
+## November 14 distinct-claim evaluation
+
+[Per-claim results](scifact-distinct-claims-2026-11-14.json) record a run with the
+current evidence selection pipeline and prepared local dense models. The corpus
+used seed 20261114. The run excluded 81 claim IDs from earlier committed results
+and evaluated all 30 remaining eligible claims within the sampled 1,000-document
+corpus. Gold annotations come from SciFact's public development split. This run
+measures evidence retrieval and selection within that corpus. Expert assessment
+of contradictions, abstentions and experimental proposals remains open.
+
+| Measure | Result |
+| --- | --- |
+| Gold evidence documents in the top eight, averaged across claims | 96.7% for both lexical and hybrid retrieval |
+| First candidate matches an annotated rationale | 18/30 |
+| At least one candidate matches an annotated rationale | 23/30 |
+| Annotated-rationale matches across all selected candidates | 27/90 |
+| Dense retrieval and reranking active | 30/30 |
+
+Both retrieval modes missed the gold document for claim 1110. Six other claims
+yielded no matching candidate even though their gold documents were retrieved.
+Different claim sets prevent a paired comparison with the previous 19/30 result.
+
+To reproduce, prepare the models and use the saved exclusion list. The dataset
+archive's SHA-256 is recorded in the results file.
+
+```bash
+python -c 'import json; d=json.load(open("docs/scifact-distinct-claims-2026-11-14.json")); print(json.dumps({"results": [{"claim_id": i} for i in d["excluded_prior_claim_ids"]]}))' > /tmp/ares-eval-excluded.json
+ARES_EVAL_SEED=20261114 ARES_EVAL_EXCLUDE=/tmp/ares-eval-excluded.json ARES_EVAL_OUTPUT=/tmp/ares-eval-results.json PYTHONPATH=. python scripts/evaluate_scifact.py
+```
