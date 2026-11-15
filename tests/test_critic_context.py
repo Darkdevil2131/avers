@@ -54,3 +54,25 @@ def test_unrelated_outcomes_require_review_instead_of_a_clear_direction_check():
     assert result['accepted_as_candidate']
     assert result['direction_check']['status']=='requires_review'
     assert not result['direction_check']['context_verified']
+
+
+@pytest.mark.parametrize('statement,quote', [
+    ('Coating adhesion increased at low humidity.', 'Coating adhesion decreased at high humidity.'),
+    ('Coating adhesion decreased at higher humidity.', 'Coating adhesion increased at lower humidity.'),
+])
+def test_different_named_exposure_levels_require_review(statement, quote):
+    result = proposal_critic({'statement': statement, 'basis_quote': quote})
+    assert result['accepted_as_candidate']
+    assert result['direction_check']['status'] == 'requires_review'
+    assert result['direction_check']['different_named_levels']
+    assert not result['scientific_validation']
+
+
+def test_same_named_exposure_level_still_flags_opposition():
+    result = proposal_critic({
+        'statement': 'Coating adhesion increased at high humidity.',
+        'basis_quote': 'Coating adhesion decreased at higher humidity.',
+    })
+    assert not result['accepted_as_candidate']
+    assert result['direction_check']['status'] == 'potential_opposition'
+    assert not result['direction_check']['different_named_levels']

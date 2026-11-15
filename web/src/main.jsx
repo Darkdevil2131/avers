@@ -251,7 +251,7 @@ export function App() {
                 <div className="assessment"><span className="assessment-badge">{report.assessment || 'inconclusive'}</span><span>{report.reviewed_claim ? 'Reviewed claim assessment at run time' : 'Scientific assessment requires review'}</span></div>
                 {report.outdated_sources.length > 0 && <p className="warning">Source reviews have changed since this report was saved. Start a new run to refresh the evidence.</p>}
                 {report.review_links_changed && <p className="warning">Reviewed evidence was added after this assessment. Start a new run to include it.</p>}
-                <h3>{report.question}</h3>{report.summary_status && <small>{report.summary_status}</small>}<p>{report.summary}</p>{report.reasoner && <p>Local reasoning: {report.reasoner.status}{report.reasoner.reason ? ' — ' + report.reasoner.reason : ''}</p>}
+                <h3>{report.question}</h3>{report.summary_status && <small>{report.summary_status}</small>}<p>{report.summary}</p>{report.reasoner && <p>Local reasoning: {report.reasoner.status}{report.reasoner.reason ? ' — ' + report.reasoner.reason : ''}</p>}{report.reasoner?.retry && <p>One model correction attempt followed a potential opposition. The result requires scientific review.</p>}
                 {report.reviewed_claim && <ReviewedClaim claim={report.reviewed_claim}/>}
                 {report.retrieval && <p className="warning">Retrieval: {report.retrieval.mode} · {report.retrieval.dense_available ? 'Dense embeddings + keyword search' : report.retrieval.reason || 'No indexed passages'}</p>}
                 {report.collection && <section aria-label="Source collection"><h3>Source collection</h3>

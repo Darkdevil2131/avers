@@ -126,13 +126,28 @@ class ResearchEngine:
                             "scientific_support": "unverified"})
             event("reasoner_started", {"mode": "local model if configured", "network_tools": False})
             inference=suggest(run["question"],citations) if not stopped() else {"status":"cancelled_or_budget_exhausted","proposals":[]}
-            candidates=inference["proposals"]
             rejected=[];proposals=[]
-            for candidate in candidates:
-                check=proposal_critic(candidate)
-                if check['accepted_as_candidate']:
-                    proposals.append(dict(candidate,consistency_check=check))
-                else:rejected.append({'candidate':candidate,'check':check})
+            def review_candidates(candidates):
+                for candidate in candidates:
+                    check=proposal_critic(candidate)
+                    if check['accepted_as_candidate']:
+                        proposals.append(dict(candidate,consistency_check=check))
+                    else:
+                        rejected.append({'candidate':candidate,'check':check})
+            review_candidates(inference["proposals"])
+            # One bounded correction attempt, only after an explicit opposition.
+            # Do not pass generated text or untrusted source instructions as feedback.
+            remaining = deadline - time.monotonic()
+            if (not proposals and any(item['check']['direction_check']['status'] == 'potential_opposition'
+                                      for item in rejected)
+                    and remaining >= 2 and not stopped()):
+                first = {k:v for k,v in inference.items() if k != 'proposals'}
+                retry = suggest(run["question"], citations, retry_opposition=True,
+                                timeout_seconds=min(30, remaining - 1))
+                review_candidates(retry['proposals'])
+                inference = {**retry, 'initial_attempt': first,
+                             'retry': {'trigger': 'potential_opposition', 'attempts': 1,
+                                       'scientific_validity': 'unvalidated'}}
             exposure_proposal = propose_exposure_test(findings, criticism)
             if exposure_proposal:
                 proposals.append(exposure_proposal)
