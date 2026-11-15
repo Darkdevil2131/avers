@@ -191,6 +191,11 @@ class ResearchEngine:
                     "attempt": claimed["attempts"], "external_collection_requested": bool(claimed["external"]),
                     "planner_policy": "evidence-triggered-follow-up-v1",
                 }
+                if any(f['method'] == 'context-weighted-sentence-reranker-v2' for f in findings):
+                    from .retrieval import DENSE, RERANKER_MODEL
+                    report['execution']['finding_reranker'] = {
+                        'model': RERANKER_MODEL, 'snapshot_sha256': DENSE.reranker_artifact_hash,
+                    }
                 if reviewed_claim:
                     report["reviewed_claim"] = reviewed_claim
                 lines = ["# Research evidence report", "", run["question"], "",

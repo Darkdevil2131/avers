@@ -59,6 +59,7 @@ def verify_findings(bundle):
     """Rerun extraction over archived passages using the current local models."""
     replay_markdown(bundle)
     from .agents import extract
+    from .retrieval import DENSE, RERANKER_MODEL
 
     report = bundle['report']
     original = report.get('findings', [])
@@ -66,14 +67,24 @@ def verify_findings(bundle):
     fields = ('citation', 'source_id', 'statement', 'start_offset', 'end_offset', 'method')
     saved = [{key: item[key] for key in fields} for item in original]
     current = [{key: item[key] for key in fields} for item in rerun]
+    recorded_model = (report.get('execution') or {}).get('finding_reranker') or {}
+    recorded_hash = recorded_model.get('snapshot_sha256')
+    current_hash = DENSE.reranker_artifact_hash if any(
+        item['method'] == 'context-weighted-sentence-reranker-v2' for item in rerun
+    ) else None
+    identity_verified = bool(recorded_hash and current_hash and recorded_hash == current_hash
+                             and recorded_model.get('model') == RERANKER_MODEL)
+    identity_mismatch = bool(recorded_hash and current_hash and not identity_verified)
     return {
-        'match': saved == current,
+        'match': saved == current and not identity_mismatch,
         'saved_count': len(saved),
         'rerun_count': len(current),
         'saved': saved,
         'rerun': current,
         'scope': 'Extraction from archived cited passages with current local models. Retrieval and reasoning are not rerun.',
-        'model_identity_verified': False,
+        'model_identity_verified': identity_verified,
+        'recorded_model_sha256': recorded_hash,
+        'current_model_sha256': current_hash,
     }
 
 

@@ -27,8 +27,10 @@ and recorded settings. Treat it as private research data. Run
 hashes, citation and finding spans and reconstruct the saved Markdown offline.
 Add `--check-findings` to rerun extraction over the archived cited passages with
 the currently installed local models and compare ordered findings and methods.
-The command prints both selections and exits with an error if they differ. The
-original model artifacts are not verified by this comparison. The ordinary report
+New reports record a digest of the local reranker snapshot, including model and
+tokenizer files, which the comparison checks. Older reports lack that digest and
+show model identity as unverified. The command prints both selections and exits
+with an error if they differ or the recorded snapshot differs. The ordinary report
 download adds current retraction and review notices. Retrieval, external search,
 and hypothesis inference are not rerun by the historical reconstruction.
 
