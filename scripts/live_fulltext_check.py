@@ -10,7 +10,7 @@ try:
     results.append({'scope': 'prior-art title search', 'status': 'passed', 'titles': len(titles), 'query': topic_query})
 except Exception as exc:
     results.append({'scope': 'prior-art title search', 'status': 'failed', 'error': str(exc), 'cause': str(exc.__cause__)[:200]})
-for pmcid in ['PMC4383902','PMC5753258']:
+for pmcid in ['PMC4383902','PMC5753258','PMC13676768']:
     try:
         document=provider.fulltext(pmcid)
         metadata=document['document'];raw=base64.b64decode(metadata.get('original_xml_base64') or metadata['original_content_base64'])

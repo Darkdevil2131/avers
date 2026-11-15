@@ -15,6 +15,26 @@ def test_rights_gated_fulltext_and_locations():
     with pytest.raises(ValueError):parse_jats(XML.replace(b'https://creativecommons.org/licenses/by/4.0/',b'https://example.org/license'),'PMC123')
     with pytest.raises(Exception):parse_jats(b'<!DOCTYPE x [<!ENTITY leak SYSTEM "file:///etc/passwd">]><article>&leak;</article>','PMC1')
 
+
+def test_jats_standard_doctype_preserves_original_and_blocks_entities():
+    import base64
+    from hashlib import sha256
+
+    declaration = (b'<!DOCTYPE article PUBLIC "-//NLM//DTD JATS (Z39.96) Journal Archiving '
+                   b'and Interchange DTD with MathML3 v1.4 20241031//EN" '
+                   b'"JATS-archivearticle1-4-mathml3.dtd">\n')
+    raw = b'<?xml version="1.0" encoding="UTF-8"?>\n' + declaration + XML
+    doc = parse_jats(raw, 'PMC123')
+    assert base64.b64decode(doc['document']['original_xml_base64']) == raw
+    assert doc['document']['original_sha256'] == sha256(raw).hexdigest()
+    assert 'Humidity reduced' in doc['text']
+    internal = declaration.replace(b'>\n', b' [<!ENTITY leak SYSTEM "file:///etc/passwd">]>\n')
+    with pytest.raises(Exception):
+        parse_jats(internal + XML.replace(b'Humidity experiment', b'&leak;'), 'PMC123')
+    with pytest.raises(Exception):
+        parse_jats(declaration.replace(b'JATS-archivearticle1-4-mathml3.dtd',
+                                       b'https://example.org/evil.dtd') + XML, 'PMC123')
+
 def test_extraction_exact_span_and_candidate_only():
     quote='  Humidity reduced the coating stability by 20%. Other words.'
     citations=[{'source_id':'s','label':'S1','quote':quote,'start_offset':0,'origin':'user_supplied','url':'fixture'}]
