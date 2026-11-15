@@ -64,6 +64,11 @@ def export_markdown(saved, payload, changed, review_links_changed=False):
         if screen:
             lines += [f"Literature title screen: {screen['status'].replace('_', ' ')}.",
                       screen['scope'], 'Novelty remains unverified.']
+            search = screen.get('topic_search')
+            if search:
+                lines += [f"Topic search: {search['status'].replace('_', ' ')}."]
+                if search.get('query'):
+                    lines += [f"Query: {search['query']}", f"Bibliographic titles returned: {search['records']}."]
             for match in screen['matches']:
                 lines += [f"- {match['title']} · {match['url']}"]
         experiment = proposal.get('experiment_plan')

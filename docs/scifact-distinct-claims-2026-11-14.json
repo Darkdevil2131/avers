@@ -1,0 +1,503 @@
+{
+  "dataset": "SciFact development split restricted to independently preselected 1000-document corpus",
+  "source": "https://github.com/allenai/scifact",
+  "license": "https://github.com/allenai/scifact/blob/master/LICENSE.md",
+  "archive_sha256": "11c621288d41ac144d29b13b0f8503b3820b7d6e8b1f6ff24dff335c196d76be",
+  "document_seed": 20261114,
+  "excluded_prior_claim_ids": [
+    3,
+    5,
+    48,
+    49,
+    50,
+    56,
+    57,
+    70,
+    100,
+    113,
+    115,
+    124,
+    129,
+    130,
+    163,
+    180,
+    183,
+    230,
+    233,
+    236,
+    239,
+    248,
+    249,
+    314,
+    338,
+    385,
+    415,
+    431,
+    501,
+    513,
+    516,
+    521,
+    525,
+    536,
+    549,
+    569,
+    674,
+    718,
+    721,
+    723,
+    728,
+    729,
+    744,
+    756,
+    770,
+    781,
+    784,
+    793,
+    808,
+    811,
+    823,
+    837,
+    847,
+    852,
+    903,
+    922,
+    960,
+    967,
+    993,
+    1012,
+    1019,
+    1020,
+    1021,
+    1041,
+    1062,
+    1086,
+    1088,
+    1132,
+    1140,
+    1150,
+    1202,
+    1221,
+    1241,
+    1266,
+    1270,
+    1271,
+    1274,
+    1290,
+    1303,
+    1319,
+    1320
+  ],
+  "query_seed": 42,
+  "documents": 1000,
+  "passages": 2078,
+  "queries": 30,
+  "selection": "Shuffle corpus with fixed seed, keep 1000 documents; retain development claims whose complete gold evidence is in that corpus; shuffle eligible claims and take up to 30. Gold is used only for selection and scoring.",
+  "limitations": [
+    "Restricted-corpus evaluation is easier than full SciFact retrieval",
+    "Development set, not hidden official test set",
+    "Pretrained weights unchanged; extraction selection was revised after observing the baseline development result, so this is development evaluation, not an independent final acceptance test",
+    "This does not validate truth assessment, causal reasoning, or hypothesis quality",
+    "Extraction precision is exact sentence containment and does not measure semantic equivalence"
+  ],
+  "lexical_macro_recall8": 0.9666666666666667,
+  "hybrid_macro_recall8": 0.9666666666666667,
+  "candidate_rationale_precision": 0.3,
+  "first_candidate_rationale_accuracy": 0.6,
+  "hybrid_active_queries": 30,
+  "reranked_queries": 30,
+  "seconds": 259.33389900400016,
+  "results": [
+    {
+      "claim_id": 839,
+      "gold_documents": [
+        "1469751"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 578,
+      "gold_documents": [
+        "8764879"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 219,
+      "gold_documents": [
+        "21366394"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 1185,
+      "gold_documents": [
+        "16737210"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 882,
+      "gold_documents": [
+        "14803797"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 212,
+      "gold_documents": [
+        "22038539"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 185,
+      "gold_documents": [
+        "18340282"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 380,
+      "gold_documents": [
+        "19005293"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 295,
+      "gold_documents": [
+        "20310709"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 2,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 589,
+      "gold_documents": [
+        "10984005"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 2,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 218,
+      "gold_documents": [
+        "21366394"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 2,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 1110,
+      "gold_documents": [
+        "13770184"
+      ],
+      "lexical_recall8": 0.0,
+      "hybrid_recall8": 0.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 1262,
+      "gold_documents": [
+        "44172171"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 880,
+      "gold_documents": [
+        "8426046"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 742,
+      "gold_documents": [
+        "32159283"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 1216,
+      "gold_documents": [
+        "24142891"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 142,
+      "gold_documents": [
+        "10582939"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 540,
+      "gold_documents": [
+        "11886686"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 805,
+      "gold_documents": [
+        "22180793"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 143,
+      "gold_documents": [
+        "10582939"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 743,
+      "gold_documents": [
+        "32159283"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 1259,
+      "gold_documents": [
+        "24341590"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 148,
+      "gold_documents": [
+        "1084345"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 982,
+      "gold_documents": [
+        "2988714"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 216,
+      "gold_documents": [
+        "21366394"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 217,
+      "gold_documents": [
+        "21366394"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 921,
+      "gold_documents": [
+        "1642727"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 118,
+      "gold_documents": [
+        "6372244"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 2,
+      "first_candidate_matches_rationale": true
+    },
+    {
+      "claim_id": 146,
+      "gold_documents": [
+        "10582939"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 0,
+      "first_candidate_matches_rationale": false
+    },
+    {
+      "claim_id": 879,
+      "gold_documents": [
+        "8426046"
+      ],
+      "lexical_recall8": 1.0,
+      "hybrid_recall8": 1.0,
+      "retrieval_mode": "hybrid",
+      "reranked": true,
+      "extracted_candidates": 3,
+      "rationale_matching_candidates": 1,
+      "first_candidate_matches_rationale": false
+    }
+  ],
+  "pipeline_revision": "107c4c030208e6c252fd4eec9c51272d48464f73",
+  "evaluation_scope": "Reported before tuning on these 30 claim results; excluded 81 claim IDs from earlier committed runs."
+}

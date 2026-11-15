@@ -4,6 +4,8 @@ import re
 
 from .providers import ProviderError
 
+MAX_SEARCHES = 2
+
 
 def evidence_signals(findings, citations, criticism):
     """Counts describe retrieval coverage, never study quality or independence."""
@@ -19,15 +21,20 @@ def evidence_signals(findings, citations, criticism):
     }
 
 
+def question_keywords(question):
+    """Return a small, ordered list of literal tokens from the submitted question."""
+    ignored = {'what', 'does', 'show', 'about', 'how', 'why', 'when', 'which', 'where',
+               'the', 'and', 'with', 'from', 'under', 'effect', 'affect', 'evidence', 'this'}
+    return list(dict.fromkeys(
+        word.casefold() for word in re.findall(r'[^\W\d_]{3,}', question)
+        if len(word) <= 80 and word.casefold() not in ignored
+    ))[:5]
+
+
 def follow_up(question, signals):
     # Only the question is approved for external search. Private findings inform
     # the decision but their contents never enter the generated query.
-    ignored = {'what', 'does', 'show', 'about', 'how', 'why', 'when', 'which', 'where',
-               'the', 'and', 'with', 'from', 'under', 'effect', 'affect', 'evidence', 'this'}
-    tokens = list(dict.fromkeys(
-        word.casefold() for word in re.findall(r'[^\W\d_]{3,}', question)
-        if word.casefold() not in ignored
-    ))[:5]
+    tokens = question_keywords(question)
     if not tokens:
         return None
     base = ' AND '.join(f'"{word}"' for word in tokens)
