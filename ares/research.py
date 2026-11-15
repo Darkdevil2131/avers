@@ -213,6 +213,8 @@ class ResearchEngine:
                     lines += [f"- {item['pmcid']} collected using a fallback provider."]
                     for attempt in item['attempts']:
                         lines += [f"  - {attempt['provider']}: {attempt['reason'].replace('_', ' ')}"]
+                for item in collection.get('identity_unverified', []):
+                    lines += [f"- {item['pmcid']}: article XML did not report a PMC identifier; identity needs review."]
                 lines += [f"- Search ({entry['strategy']}): {entry['query']}" for entry in collection['queries']]
                 if collection['bounded']:
                     lines += ['Collection budget reached; the search is incomplete.']

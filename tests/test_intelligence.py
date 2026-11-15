@@ -1,6 +1,6 @@
 import json
 import pytest
-from ares.documents import parse_jats
+from ares.documents import DocumentIdentityError, parse_jats
 from ares.agents import extract, critique, plan
 from ares.retrieval import hybrid_search, DENSE
 from test_research import client, project, source, run
@@ -10,10 +10,28 @@ XML=b'''<article xmlns:xlink="http://www.w3.org/1999/xlink"><front><article-meta
 def test_rights_gated_fulltext_and_locations():
     doc=parse_jats(XML,'PMC123')
     assert doc['origin']=='europepmc_fulltext'
+    assert doc['document']['identity_status'] == 'not_reported'
     for loc in doc['document']['locations']:assert doc['text'][loc['start']:loc['end']].startswith('Humidity')
     assert doc['document']['references']==['PMC123']
     with pytest.raises(ValueError):parse_jats(XML.replace(b'https://creativecommons.org/licenses/by/4.0/',b'https://example.org/license'),'PMC123')
     with pytest.raises(Exception):parse_jats(b'<!DOCTYPE x [<!ENTITY leak SYSTEM "file:///etc/passwd">]><article>&leak;</article>','PMC1')
+
+
+@pytest.mark.parametrize('identifier', ['123', 'PMC123', 'pmc123'])
+def test_jats_checks_primary_article_identifier(identifier):
+    item = f'<article-id pub-id-type="pmc">{identifier}</article-id>'.encode()
+    raw = XML.replace(b'<article-meta>', b'<article-meta>' + item)
+    doc = parse_jats(raw, 'PMC123')
+    assert doc['document']['identity_status'] == 'matched'
+    assert doc['document']['requested_pmcid'] == 'PMC123'
+    with pytest.raises(DocumentIdentityError):
+        parse_jats(raw, 'PMC124')
+
+
+def test_reference_pmc_identifier_does_not_prove_article_identity():
+    reference = b'<ref><article-id pub-id-type="pmc">999</article-id></ref>'
+    raw = XML.replace(b'</ref-list>', reference + b'</ref-list>')
+    assert parse_jats(raw, 'PMC123')['document']['identity_status'] == 'not_reported'
 
 
 def test_jats_standard_doctype_preserves_original_and_blocks_entities():

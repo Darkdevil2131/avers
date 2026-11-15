@@ -17,7 +17,8 @@ for pmcid in ['PMC4383902','PMC5753258','PMC13676768']:
         assert hashlib.sha256(raw).hexdigest()==metadata['original_sha256']
         assert len(document['text'])>1000
         for loc in metadata['locations']:assert document['text'][loc['start']:loc['end']]
-        results.append({'pmcid':pmcid,'status':'passed','provider':document['origin'],'license':document['license_status'],'characters':len(document['text']),'locations':len(metadata['locations']),'original_sha256':metadata['original_sha256']})
+        assert metadata['identity_status'] in {'matched', 'not_reported'}
+        results.append({'pmcid':pmcid,'status':'passed','provider':document['origin'],'license':document['license_status'],'identity_status':metadata['identity_status'],'characters':len(document['text']),'locations':len(metadata['locations']),'original_sha256':metadata['original_sha256']})
     except Exception as exc:
         results.append({'pmcid':pmcid,'status':'failed','error':str(exc),'cause':str(exc.__cause__)[:200]})
 record={'checked_at':datetime.now(timezone.utc).isoformat(),'checks':results,'passed':all(x['status']=='passed' for x in results)}

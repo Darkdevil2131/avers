@@ -1,7 +1,7 @@
 import json
 import copy
 import re
-from .documents import DocumentLimitError, UnsupportedLicense, parse_jats,parse_bioc
+from .documents import DocumentIdentityError, DocumentLimitError, UnsupportedLicense, parse_jats,parse_bioc
 import threading
 import time
 import urllib.error
@@ -22,6 +22,8 @@ def fulltext_failure(provider, error):
     """Classify failures without exposing remote payloads or exception messages."""
     if isinstance(error, UnsupportedLicense):
         reason = 'unsupported_license'
+    elif isinstance(error, DocumentIdentityError):
+        reason = 'identity_mismatch'
     elif isinstance(error, DocumentLimitError):
         reason = 'content_limit'
     elif isinstance(error, urllib.error.HTTPError):
