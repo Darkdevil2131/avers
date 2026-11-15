@@ -59,7 +59,7 @@ class EvidenceCollector:
         self.audit = {
             'requested': requested, 'status': 'not_requested', 'queries': [],
             'metadata_records': 0, 'fulltext_attempted': 0, 'fulltext_stored': 0,
-            'errors': [], 'bounded': False,
+            'errors': [], 'fallbacks': [], 'bounded': False,
             'scope': 'Bounded literature collection; absence of results is not evidence against a hypothesis.',
         }
         self.urls = set()
@@ -123,16 +123,24 @@ class EvidenceCollector:
                 document = self.provider.fulltext(pmcid)
             except ProviderError as exc:
                 message = str(exc)[:300]
-                self.audit['errors'].append({'stage': 'fulltext', 'pmcid': pmcid, 'message': message})
-                self.event('document_rejected', {'pmcid': pmcid, 'message': message})
+                details = {'pmcid': pmcid, 'message': message}
+                if exc.attempts:
+                    details['attempts'] = exc.attempts
+                self.audit['errors'].append({'stage': 'fulltext', **details})
+                self.event('document_rejected', details)
                 continue
             if self.stopped():
                 self.audit['bounded'] = True
                 break
             source_id, = self.store_sources([document])
             self.audit['fulltext_stored'] += 1
-            self.event('document_ingested', {'source_id': source_id, 'pmcid': pmcid,
-                                           'characters': len(document['text']), 'license': document['license_status']})
+            details = {'source_id': source_id, 'pmcid': pmcid,
+                       'characters': len(document['text']), 'license': document['license_status']}
+            attempts = document.get('document', {}).get('fulltext_attempts')
+            if attempts:
+                details['attempts'] = attempts
+                self.audit['fallbacks'].append({'pmcid': pmcid, 'source_id': source_id, 'attempts': attempts})
+            self.event('document_ingested', details)
             if depth == 0:
                 frontier.extend((ref, 1) for ref in document['document']['references'][:2]
                                 if ref not in self.seen)

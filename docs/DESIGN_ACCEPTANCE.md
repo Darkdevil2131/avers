@@ -19,6 +19,12 @@ Use **Add a source → Upload a PDF** to attach a document you have permission t
 | Infrastructure and cost (pp. 22–24) | Container build and disposable PostgreSQL workflow checks | Verified live revision, no-trial hosting at ₹0 additional spend, durable storage, resource and inference-load measurements |
 | Scientific and publication gates (pp. 24–28) | Small development-set retrieval/extraction comparisons and synthetic software regressions | Frozen materials-science test set, independent labels, baseline comparisons, ablations, error/abstention reporting and expert review |
 
+For a full-text failure, new collection reports identify the PMC article and show
+sanitized outcomes for both providers, such as a timeout, missing article, or
+unsupported license. A successful NCBI BioC fallback preserves the primary
+failure category in the structured document. Historical reports retain their
+original error details.
+
 ## Literature screening, table export and historical replay
 
 **Download replay bundle** saves the historical report, its cited source text,

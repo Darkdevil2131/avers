@@ -6,6 +6,14 @@ from defusedxml import ElementTree as ET
 ALLOWED_LICENSE = re.compile(r'https?://creativecommons.org/(?:licenses/(?:by|by-sa)/[134]\.0|publicdomain/zero/1\.0)/?$', re.I)
 
 
+class UnsupportedLicense(ValueError):
+    pass
+
+
+class DocumentLimitError(ValueError):
+    pass
+
+
 def _text(node):
     return ' '.join(''.join(node.itertext()).split()) if node is not None else ''
 
@@ -54,14 +62,14 @@ def _jats_tables(parts):
 
 def parse_jats(raw: bytes, pmcid: str):
     if len(raw)>4_000_000:
-        raise ValueError('XML exceeds 4 MB budget')
+        raise DocumentLimitError('XML exceeds 4 MB budget')
     root=ET.fromstring(raw, forbid_dtd=True, forbid_entities=True, forbid_external=True)
     text = _text
     licenses=root.findall('.//permissions/license')
     links=[v for node in licenses for descendant in node.iter() for k,v in descendant.attrib.items() if k.endswith('href')]
     license_url=next((x for x in links if ALLOWED_LICENSE.fullmatch(x)),None)
     if license_url is None:
-        raise ValueError('Full-text license is not an explicitly supported CC BY, CC BY-SA or CC0 license')
+        raise UnsupportedLicense('Full-text license is not an explicitly supported CC BY, CC BY-SA or CC0 license')
     title=text(root.find('.//article-title'))
     chunks=[];locations=[];offset=0
     # Preserve normalized section text with location paths; original XML hash accompanies it.
@@ -71,7 +79,7 @@ def parse_jats(raw: bytes, pmcid: str):
             if node.tag not in {'p','table-wrap'}:continue
             value=text(node)
             if not value:continue
-            if offset+len(value)>250000:raise ValueError('Article exceeds 250000-character ingestion limit')
+            if offset+len(value)>250000:raise DocumentLimitError('Article exceeds 250000-character ingestion limit')
             chunks.append(value);locations.append({'id':node.get('id'),'kind':node.tag,'start':offset,'end':offset+len(value)})
             offset+=len(value)+2
     if not chunks:raise ValueError('No article body or abstract text')
@@ -87,14 +95,14 @@ def parse_jats(raw: bytes, pmcid: str):
 
 def parse_bioc(raw: bytes, pmcid: str):
     import json
-    if len(raw)>4_000_000:raise ValueError('BioC exceeds 4 MB budget')
+    if len(raw)>4_000_000:raise DocumentLimitError('BioC exceeds 4 MB budget')
     collections=json.loads(raw)
     if not isinstance(collections,list):raise ValueError('Unexpected BioC collection')
     documents=[d for collection in collections for d in collection.get('documents',[]) if d.get('id')==pmcid]
     if len(documents)!=1:raise ValueError('BioC document identity mismatch')
     document=documents[0]
     license_name=document.get('infons',{}).get('license','').strip().upper()
-    if license_name not in {'CC BY','CC BY-SA','CC0'}:raise ValueError('Unsupported BioC reuse license')
+    if license_name not in {'CC BY','CC BY-SA','CC0'}:raise UnsupportedLicense('Unsupported BioC reuse license')
     chunks=[];locations=[];offset=0;title=pmcid;doi=None
     for passage in document.get('passages',[]):
         info=passage.get('infons',{});value=passage.get('text','').strip()
@@ -102,7 +110,7 @@ def parse_bioc(raw: bytes, pmcid: str):
         if info.get('type')=='front':title=value or title
         doi=doi or info.get('article-id_doi')
         if not value or str(info.get('section_type','')).upper() in {'REF','REFERENCES'}:continue
-        if offset+len(value)>250000:raise ValueError('Article text budget exceeded')
+        if offset+len(value)>250000:raise DocumentLimitError('Article text budget exceeded')
         chunks.append(value);locations.append({'kind':info.get('type','passage'),'section':info.get('section_type'),'source_offset':passage.get('offset'),'start':offset,'end':offset+len(value)})
         offset+=len(value)+2
     if not chunks:raise ValueError('No BioC text passages')

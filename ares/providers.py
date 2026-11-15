@@ -1,18 +1,51 @@
 import json
 import copy
 import re
-from .documents import parse_jats,parse_bioc
+from .documents import DocumentLimitError, UnsupportedLicense, parse_jats,parse_bioc
 import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from defusedxml.common import DefusedXmlException
 
 ENDPOINT = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
 
 
 class ProviderError(Exception):
-    pass
+    def __init__(self, message, *, attempts=None):
+        super().__init__(message)
+        self.attempts = attempts or []
+
+
+def fulltext_failure(provider, error):
+    """Classify failures without exposing remote payloads or exception messages."""
+    if isinstance(error, UnsupportedLicense):
+        reason = 'unsupported_license'
+    elif isinstance(error, DocumentLimitError):
+        reason = 'content_limit'
+    elif isinstance(error, urllib.error.HTTPError):
+        if error.code == 404:
+            reason = 'not_found'
+        elif error.code == 429:
+            reason = 'rate_limited'
+        elif error.code in (401, 403):
+            reason = 'access_denied'
+        else:
+            reason = 'http_error'
+    elif isinstance(error, TimeoutError):
+        reason = 'timeout'
+    elif isinstance(error, urllib.error.URLError):
+        reason = 'timeout' if isinstance(error.reason, TimeoutError) else 'network_error'
+    elif isinstance(error, OSError):
+        reason = 'network_error'
+    elif isinstance(error, ProviderError):
+        reason = 'redirect_blocked'
+    elif isinstance(error, (ValueError, TypeError, KeyError, AttributeError, SyntaxError, DefusedXmlException)):
+        reason = 'invalid_or_unreadable_content'
+    else:
+        reason = 'processing_error'
+    return {'provider': provider, 'reason': reason}
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -96,15 +129,18 @@ class EuropePMC:
                     raw=response.read(4_000_001)
                 return parse_jats(raw,pmcid)
             except Exception as primary:
+                primary_attempt = fulltext_failure('Europe PMC', primary)
                 # An independent approved public API, not an arbitrary webpage scraper.
                 try:
                     request=urllib.request.Request('https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/'+pmcid+'/unicode',headers={'User-Agent':'ARES/0.4'})
                     with self.opener.open(request,timeout=20) as response:raw=response.read(4_000_001)
                     result=parse_bioc(raw,pmcid)
                     result['document']['primary_provider_error']=type(primary).__name__
+                    result['document']['fulltext_attempts'] = [primary_attempt, {'provider':'NCBI BioC','reason':'collected'}]
                     return result
                 except Exception as fallback:
-                    raise ProviderError("Both approved full-text APIs failed or returned unsupported content/license") from fallback
+                    attempts = [primary_attempt, fulltext_failure('NCBI BioC', fallback)]
+                    raise ProviderError('Full text could not be collected from either provider.', attempts=attempts) from fallback
 
     def ncbi_search(self,query,limit):
         params=urllib.parse.urlencode({'db':'pmc','term':query+' AND open access[filter]','retmode':'json','retmax':min(limit,10)})

@@ -1,10 +1,100 @@
 import io
 import json
+import urllib.error
 import pytest
 from ares.providers import EuropePMC, ProviderError
 from ares.collection import evidence_signals, follow_up
 from test_research import client, project, run, source, FixtureProvider
 from fastapi.testclient import TestClient
+
+
+def test_fulltext_failure_reports_provider_outcomes_without_raw_errors(monkeypatch):
+    class FailingOpener:
+        def open(self, request, timeout):
+            if 'europepmc' in request.full_url:
+                raise urllib.error.HTTPError(request.full_url, 404, 'private response', {}, None)
+            raise urllib.error.URLError('secret transport details')
+
+    provider = EuropePMC()
+    provider.opener = FailingOpener()
+    with pytest.raises(ProviderError) as exc:
+        provider.fulltext('PMC123')
+    assert exc.value.attempts == [
+        {'provider': 'Europe PMC', 'reason': 'not_found'},
+        {'provider': 'NCBI BioC', 'reason': 'network_error'},
+    ]
+    assert 'secret' not in str(exc.value)
+
+
+def test_fulltext_fallback_records_license_failure_without_raw_payload(monkeypatch):
+    import ares.providers as providers
+    from ares.documents import UnsupportedLicense
+
+    class Opener:
+        def open(self, request, timeout):
+            return io.BytesIO(b'private payload')
+
+    provider = EuropePMC()
+    provider.opener = Opener()
+    monkeypatch.setattr(providers, 'parse_jats', lambda raw, pmcid: (
+        _ for _ in ()).throw(UnsupportedLicense('private license text')))
+    monkeypatch.setattr(providers, 'parse_bioc', lambda raw, pmcid: {'document': {}})
+    document = provider.fulltext('PMC123')
+    assert document['document']['fulltext_attempts'] == [
+        {'provider': 'Europe PMC', 'reason': 'unsupported_license'},
+        {'provider': 'NCBI BioC', 'reason': 'collected'},
+    ]
+
+
+def test_provider_failure_details_reach_report_and_export(tmp_path):
+    class Metadata:
+        def search(self, query):
+            return [{'url': 'https://example.org/record', 'title': 'Fixture', 'text': 'Fixture',
+                     'license_status': 'fixture', 'origin': 'fixture_metadata',
+                     'is_open_access': True, 'pmcid': 'PMC12'}]
+
+        def fulltext(self, pmcid):
+            raise ProviderError('Full text unavailable.', attempts=[
+                {'provider': 'Europe PMC', 'reason': 'timeout'},
+                {'provider': 'NCBI BioC', 'reason': 'unsupported_license'},
+            ])
+
+    api = client(tmp_path, provider=Metadata())
+    pid = project(api)
+    rid = run(api, pid, external=True)
+    report = api.get(f'/projects/{pid}/runs/{rid}/report').json()
+    error, = report['collection']['errors']
+    assert error['pmcid'] == 'PMC12' and error['attempts'][0]['reason'] == 'timeout'
+    assert 'Europe PMC: timeout' in report['markdown']
+    assert 'NCBI BioC: unsupported license' in report['markdown']
+
+
+def test_successful_fallback_is_recorded_in_report_and_export(tmp_path):
+    class Metadata:
+        def search(self, query):
+            return [{'url': 'https://example.org/metadata', 'title': 'Fixture', 'text': 'Fixture',
+                     'license_status': 'fixture', 'origin': 'fixture_metadata',
+                     'is_open_access': True, 'pmcid': 'PMC42'}]
+
+        def fulltext(self, pmcid):
+            return {'url': 'https://example.org/fulltext', 'title': 'Fixture',
+                    'text': 'Humidity reduced coating stability during the synthetic test.',
+                    'license_status': 'fixture', 'origin': 'ncbi_bioc_fulltext',
+                    'document': {'references': [], 'fulltext_attempts': [
+                        {'provider': 'Europe PMC', 'reason': 'not_found'},
+                        {'provider': 'NCBI BioC', 'reason': 'collected'},
+                    ]}}
+
+    api = client(tmp_path, provider=Metadata())
+    pid = project(api)
+    rid = run(api, pid, external=True)
+    report = api.get(f'/projects/{pid}/runs/{rid}/report').json()
+    fallback, = report['collection']['fallbacks']
+    assert fallback['pmcid'] == 'PMC42' and fallback['attempts'][1]['reason'] == 'collected'
+    assert 'Europe PMC: not found' in report['markdown']
+    assert 'NCBI BioC: collected' in report['markdown']
+    response = api.get(f"/projects/{pid}/sources/{fallback['source_id']}/document")
+    assert response.status_code == 200 and response.json()['fulltext_attempts'] == fallback['attempts']
 
 
 class Opener:
