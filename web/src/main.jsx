@@ -266,6 +266,9 @@ export function App() {
                     <p>{item.pmcid} collected using a fallback provider.</p>
                     {item.attempts.map((attempt,j)=><p key={j}>{attempt.provider}: {attempt.reason.replaceAll('_', ' ')}</p>)}
                   </div>)}
+                  {report.collection.identity_unverified?.map((item,i)=><p className="warning" key={i}>
+                    {item.pmcid}: article XML did not report a PMC identifier; identity needs review.
+                  </p>)}
                   {report.collection.adaptation && <p>Follow-up: {report.collection.adaptation.decision.replaceAll('_', ' ')} · Candidate study identifiers: {report.collection.adaptation.before.candidate_study_ids} before, {report.collection.adaptation.after.candidate_study_ids} after</p>}
                   <details><summary>Search strategy and queries</summary>{report.collection.queries.map((item,i)=><div key={i}><p>{item.strategy}: {item.query}</p>{item.reason && <p>{item.reason}</p>}</div>)}</details>
                 </section>}

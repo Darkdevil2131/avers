@@ -59,7 +59,7 @@ class EvidenceCollector:
         self.audit = {
             'requested': requested, 'status': 'not_requested', 'queries': [],
             'metadata_records': 0, 'fulltext_attempted': 0, 'fulltext_stored': 0,
-            'errors': [], 'fallbacks': [], 'bounded': False,
+            'errors': [], 'fallbacks': [], 'identity_unverified': [], 'bounded': False,
             'scope': 'Bounded literature collection; absence of results is not evidence against a hypothesis.',
         }
         self.urls = set()
@@ -136,7 +136,13 @@ class EvidenceCollector:
             self.audit['fulltext_stored'] += 1
             details = {'source_id': source_id, 'pmcid': pmcid,
                        'characters': len(document['text']), 'license': document['license_status']}
-            attempts = document.get('document', {}).get('fulltext_attempts')
+            metadata = document.get('document', {})
+            identity = metadata.get('identity_status')
+            if identity:
+                details['identity_status'] = identity
+            if identity == 'not_reported':
+                self.audit['identity_unverified'].append({'pmcid': pmcid, 'source_id': source_id})
+            attempts = metadata.get('fulltext_attempts')
             if attempts:
                 details['attempts'] = attempts
                 self.audit['fallbacks'].append({'pmcid': pmcid, 'source_id': source_id, 'attempts': attempts})

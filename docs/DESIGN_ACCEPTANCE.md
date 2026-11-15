@@ -25,6 +25,9 @@ unsupported license. A successful NCBI BioC fallback preserves the primary
 failure category in the structured document. Historical reports retain their
 original error details. The JATS parser handles a narrowly recognized standard
 external JATS declaration while continuing to reject embedded DTDs and entities.
+Newly fetched articles compare reported PMC identifiers to the requested article.
+The report flags JATS documents that do not report a PMC identifier. This check
+does not identify separate articles that reuse the same underlying study.
 
 ## Literature screening, table export and historical replay
 

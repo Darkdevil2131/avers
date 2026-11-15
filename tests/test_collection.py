@@ -69,6 +69,27 @@ def test_provider_failure_details_reach_report_and_export(tmp_path):
     assert 'NCBI BioC: unsupported license' in report['markdown']
 
 
+def test_unreported_identity_is_disclosed_in_report_and_export(tmp_path):
+    class Provider:
+        def search(self, query):
+            return [{'url': 'https://example.org/meta', 'title': 'Fixture', 'text': 'Fixture',
+                     'license_status': 'fixture', 'origin': 'fixture_metadata',
+                     'is_open_access': True, 'pmcid': 'PMC12'}]
+
+        def fulltext(self, pmcid):
+            return {'url': 'https://example.org/full', 'title': 'Fixture',
+                    'text': 'Humidity reduced coating stability during the synthetic test.',
+                    'license_status': 'fixture', 'origin': 'europepmc_fulltext',
+                    'document': {'references': [], 'identity_status': 'not_reported'}}
+
+    api = client(tmp_path, provider=Provider())
+    pid = project(api)
+    rid = run(api, pid, external=True)
+    report = api.get(f'/projects/{pid}/runs/{rid}/report').json()
+    assert report['collection']['identity_unverified'][0]['pmcid'] == 'PMC12'
+    assert 'article XML did not report a PMC identifier' in report['markdown']
+
+
 def test_successful_fallback_is_recorded_in_report_and_export(tmp_path):
     class Metadata:
         def search(self, query):

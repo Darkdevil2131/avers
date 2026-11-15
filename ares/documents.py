@@ -21,6 +21,10 @@ class DocumentLimitError(ValueError):
     pass
 
 
+class DocumentIdentityError(ValueError):
+    pass
+
+
 def _text(node):
     return ' '.join(''.join(node.itertext()).split()) if node is not None else ''
 
@@ -73,6 +77,17 @@ def parse_jats(raw: bytes, pmcid: str):
     parse_input = JATS_EXTERNAL_DOCTYPE.sub(rb'\1', raw, count=1)
     root=ET.fromstring(parse_input, forbid_dtd=True, forbid_entities=True, forbid_external=True)
     text = _text
+    reported_ids = [text(node) for node in root.findall('./front/article-meta/article-id')
+                    if node.get('pub-id-type', '').lower() in {'pmc', 'pmcid'}]
+    normalized_ids = []
+    for value in reported_ids:
+        match = re.fullmatch(r'(?:PMC)?([0-9]{1,12})', value, re.I)
+        if not match:
+            raise DocumentIdentityError('Invalid article PMC identifier')
+        normalized_ids.append('PMC' + match.group(1))
+    if any(identifier != pmcid for identifier in normalized_ids):
+        raise DocumentIdentityError('Article PMC identifier does not match the requested document')
+    identity_status = 'matched' if normalized_ids else 'not_reported'
     licenses=root.findall('.//permissions/license')
     links=[v for node in licenses for descendant in node.iter() for k,v in descendant.attrib.items() if k.endswith('href')]
     license_url=next((x for x in links if ALLOWED_LICENSE.fullmatch(x)),None)
@@ -99,7 +114,8 @@ def parse_jats(raw: bytes, pmcid: str):
     return {'title':title,'text':'\n\n'.join(chunks),'url':f'https://europepmc.org/articles/{pmcid}',
             'study_id':doi or pmcid,'license_status':license_url,'origin':'europepmc_fulltext',
             'document':{'original_sha256':hashlib.sha256(raw).hexdigest(),'original_xml_base64':base64.b64encode(raw).decode('ascii'),'locations':locations,'references':list(dict.fromkeys(refs))[:20], 'license':license_url,
-                        'tables': tables, 'tables_bounded': tables_bounded}}
+                        'tables': tables, 'tables_bounded': tables_bounded,
+                        'identity_status': identity_status, 'requested_pmcid': pmcid}}
 
 def parse_bioc(raw: bytes, pmcid: str):
     import json
@@ -107,7 +123,7 @@ def parse_bioc(raw: bytes, pmcid: str):
     collections=json.loads(raw)
     if not isinstance(collections,list):raise ValueError('Unexpected BioC collection')
     documents=[d for collection in collections for d in collection.get('documents',[]) if d.get('id')==pmcid]
-    if len(documents)!=1:raise ValueError('BioC document identity mismatch')
+    if len(documents)!=1:raise DocumentIdentityError('BioC document identity mismatch')
     document=documents[0]
     license_name=document.get('infons',{}).get('license','').strip().upper()
     if license_name not in {'CC BY','CC BY-SA','CC0'}:raise UnsupportedLicense('Unsupported BioC reuse license')
@@ -124,4 +140,5 @@ def parse_bioc(raw: bytes, pmcid: str):
     if not chunks:raise ValueError('No BioC text passages')
     return {'title':title[:500],'text':'\n\n'.join(chunks),'url':f'https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/',
             'study_id':doi or pmcid,'license_status':license_name+' (NCBI BioC license metadata)','origin':'ncbi_bioc_fulltext',
-            'document':{'original_sha256':hashlib.sha256(raw).hexdigest(),'original_format':'bioc_json','original_content_base64':base64.b64encode(raw).decode('ascii'),'license':license_name,'locations':locations,'references':[]}}
+            'document':{'original_sha256':hashlib.sha256(raw).hexdigest(),'original_format':'bioc_json','original_content_base64':base64.b64encode(raw).decode('ascii'),'license':license_name,'locations':locations,'references':[],
+                        'identity_status':'matched', 'requested_pmcid':pmcid}}
