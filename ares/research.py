@@ -215,7 +215,12 @@ class ResearchEngine:
                         lines += [f"  - {attempt['provider']}: {attempt['reason'].replace('_', ' ')}"]
                 for item in collection.get('identity_unverified', []):
                     lines += [f"- {item['pmcid']}: article XML did not report a PMC identifier; identity needs review."]
-                lines += [f"- Search ({entry['strategy']}): {entry['query']}" for entry in collection['queries']]
+                for entry in collection['queries']:
+                    lines += [f"- Search ({entry['strategy']}): {entry['query']}"]
+                    if entry.get('provider'):
+                        lines += [f"  - Metadata provider: {entry['provider']}"]
+                    if entry.get('fallback_used'):
+                        lines += ['  - Europe PMC was unavailable or returned an invalid response; the fallback was used.']
                 if collection['bounded']:
                     lines += ['Collection budget reached; the search is incomplete.']
                 if collection.get('adaptation'):

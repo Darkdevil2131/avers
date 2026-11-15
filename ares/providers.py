@@ -65,7 +65,10 @@ class EuropePMC:
     def search_titles(self, query):
         return self.search(query, require_titles=True)
 
-    def search(self, query, limit=8, *, require_titles=False):
+    def search_with_provenance(self, query, limit=8):
+        return self.search(query, limit, with_provenance=True)
+
+    def search(self, query, limit=8, *, require_titles=False, with_provenance=False):
         if not isinstance(query, str) or not query.strip() or len(query) > 2000:
             raise ProviderError("Search query must contain 1–2000 characters")
         if type(limit) is not int or not 1 <= limit <= 10:
@@ -74,7 +77,8 @@ class EuropePMC:
         with self.lock:
             cached = self.cache.get(key)
             if cached and time.monotonic() - cached[0] < 300:
-                return copy.deepcopy(cached[1])
+                records = copy.deepcopy(cached[1])
+                return (records, {'provider': 'Europe PMC', 'fallback_used': False}) if with_provenance else records
             delay = 1.0 - (time.monotonic() - self.last_request)
             if delay > 0:
                 time.sleep(delay)
@@ -93,7 +97,11 @@ class EuropePMC:
             except (urllib.error.URLError, TimeoutError, ValueError, KeyError, TypeError, ProviderError) as exc:
                 if require_titles:
                     raise ProviderError('Europe PMC title search is unavailable') from exc
-                return self.ncbi_search(query,limit)
+                records = self.ncbi_search(query,limit)
+                if with_provenance:
+                    return records, {'provider': 'NCBI PMC', 'fallback_used': True,
+                                     'primary_status': 'unavailable_or_invalid_response'}
+                return records
             results = []
             for record in records[:limit]:
                 source_id = str(record.get("id") or "")
@@ -116,7 +124,7 @@ class EuropePMC:
             self.cache[key] = (time.monotonic(), copy.deepcopy(results))
             if len(self.cache) > 100:
                 self.cache.pop(next(iter(self.cache)))
-            return results
+            return (results, {'provider': 'Europe PMC', 'fallback_used': False}) if with_provenance else results
 
     def fulltext(self, pmcid):
         if not isinstance(pmcid,str) or not re.fullmatch(r"PMC[0-9]{1,12}",pmcid):
