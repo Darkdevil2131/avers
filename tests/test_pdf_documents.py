@@ -33,6 +33,53 @@ def fixture_pdf():
     return buffer.getvalue()
 
 
+def table_pdf():
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=(600, 800))
+    pdf.drawString(40, 750, 'Table 1. Coating measurements')
+    for y, row in [(720, ('Sample', 'Humidity', 'Adhesion')),
+                   (700, ('A', '40%', '12 MPa')),
+                   (680, ('B', '80%', '8 MPa'))]:
+        for x, cell in zip((40, 200, 370), row):
+            pdf.drawString(x, y, cell)
+    pdf.showPage()
+    pdf.save()
+    return buffer.getvalue()
+
+
+def test_pdf_structured_table_preserves_exact_page_spans(tmp_path):
+    api = client(tmp_path)
+    pid = project(api)
+    route = f'/projects/{pid}/sources/pdf'
+    response = api.post(route, params={'license_status': 'Synthetic test fixture'},
+                        content=table_pdf(), headers={'Content-Type': 'application/pdf'})
+    assert response.status_code == 201, response.text
+    source_id = response.json()['id']
+    sources = api.get(f'/projects/{pid}/sources').json()
+    text = next(source['text'] for source in sources if source['id'] == source_id)
+    document_route = f'/projects/{pid}/sources/{source_id}/document'
+    document = api.get(document_route).json()
+    table, = document['tables']
+    assert table['page'] == 1 and table['requires_review']
+    assert [[cell['text'] for cell in row] for row in table['rows']] == [
+        ['Sample', 'Humidity', 'Adhesion'], ['A', '40%', '12 MPa'], ['B', '80%', '8 MPa']]
+    for row in table['rows']:
+        for cell in row:
+            assert text[cell['start']:cell['end']] == cell['text']
+    outsider = TestClient(api.app, headers={'Authorization': 'Bearer ' + KEYS['bob']})
+    assert outsider.get(document_route).status_code == 404
+
+
+def test_unsupported_layout_and_scanned_page_do_not_claim_table_structure():
+    from ares.pdf_documents import _table_candidates
+
+    text = ('Table 2. Synthetic observations\n'
+            'Name  Result\nA  1\nThis wrapped row has no clear columns\nB  2\n')
+    page = {'page': 1, 'start': 0, 'end': len(text), 'method': 'text_layer'}
+    assert _table_candidates(text, [page])[0] == []
+    assert _table_candidates(text, [{**page, 'method': 'ocr'}])[0] == []
+
+
 def test_pdf_upload_ocr_provenance_and_download(tmp_path):
     api = client(tmp_path)
     pid = project(api)

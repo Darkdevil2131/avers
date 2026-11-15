@@ -16,6 +16,60 @@ MAX_PAGES = 40
 MAX_TEXT = 250_000
 MAX_OCR_PAGES = 8
 PARSER_SLOTS = threading.BoundedSemaphore(2)
+TABLE_CAPTION = re.compile(r'^\s*Table\s+\d+[\w.:-]*\b', re.I)
+TABLE_CELL = re.compile(r'\S(?:.*?\S)??(?=\s{2,}|$)')
+MAX_TABLES = 20
+MAX_TABLE_ROWS = 100
+
+
+def _table_candidates(text, locations):
+    """Identify simple captioned tables in layout-preserving PDF text."""
+    tables = []
+    bounded = False
+    for location in locations:
+        if location['method'] != 'text_layer':
+            continue
+        page = text[location['start']:location['end']]
+        lines = []
+        cursor = 0
+        for line in page.splitlines(keepends=True):
+            lines.append((cursor, line.rstrip('\r\n')))
+            cursor += len(line)
+        for index, (offset, line) in enumerate(lines):
+            if not TABLE_CAPTION.match(line):
+                continue
+            rows = []
+            columns = None
+            anchors = None
+            for row_offset, row_text in lines[index + 1:]:
+                cells = list(TABLE_CELL.finditer(row_text))
+                if not cells:
+                    if rows:
+                        break
+                    continue
+                if len(cells) < 2 or len(cells) > 12:
+                    break
+                positions = [cell.start() for cell in cells]
+                if columns is None:
+                    columns, anchors = len(cells), positions
+                if len(cells) != columns or any(abs(a - b) > 4 for a, b in zip(anchors, positions)):
+                    break
+                rows.append([{'text': cell.group(),
+                              'start': location['start'] + row_offset + cell.start(),
+                              'end': location['start'] + row_offset + cell.end()}
+                             for cell in cells])
+                if len(rows) >= MAX_TABLE_ROWS:
+                    bounded = True
+                    break
+            if len(rows) < 3 or not any(re.search(r'\d', cell['text']) for row in rows[1:] for cell in row):
+                continue
+            tables.append({'page': location['page'], 'caption': line.strip(),
+                           'caption_start': location['start'] + offset,
+                           'rows': rows, 'method': 'aligned_text_candidate',
+                           'requires_review': True})
+            if len(tables) >= MAX_TABLES:
+                return tables, True
+    return tables, bounded
 
 
 class DocumentError(ValueError):
@@ -106,10 +160,12 @@ def _parse(raw, license_status, title, study_id):
             start = end + 2
         if not chunks:
             raise DocumentError('No readable text was found. Scanned pages use English OCR.')
+    text = '\n\n'.join(chunks)
+    tables, tables_bounded = _table_candidates(text, locations)
     return {
         'title': title or f'PDF document {digest[:12]}',
         'url': f'urn:sha256:{digest}',
-        'text': '\n\n'.join(chunks),
+        'text': text,
         'license_status': license_status,
         'study_id': study_id,
         'origin': 'user_pdf',
@@ -117,5 +173,11 @@ def _parse(raw, license_status, title, study_id):
             'original_format': 'pdf', 'original_sha256': digest,
             'original_content_base64': base64.b64encode(raw).decode('ascii'),
             'page_count': page_count, 'locations': locations, 'blank_pages': blank_pages,
+            'tables': tables, 'tables_bounded': tables_bounded,
+            'table_extraction': {
+                'scope': 'Captioned tables with consistently aligned text-layer rows.',
+                'ocr_pages_skipped': ocr_pages,
+                'limitations': 'Candidates require page review; merged cells and scanned tables are unsupported.',
+            },
         },
     }
