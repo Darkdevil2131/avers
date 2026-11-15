@@ -98,6 +98,7 @@ def test_replay_can_compare_extraction_and_exposes_changes(tmp_path, monkeypatch
 
     monkeypatch.delenv('ARES_REASONER_MODEL', raising=False)
     monkeypatch.setattr(DENSE, 'rerank', lambda question, values: [1.0] * len(values))
+    monkeypatch.setattr(DENSE, 'reranker_artifact_hash', None)
     api = client(tmp_path)
     pid = project(api)
     source(api, pid)
