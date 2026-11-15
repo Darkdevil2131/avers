@@ -30,6 +30,8 @@ def export_markdown(saved, payload, changed, review_links_changed=False):
     reasoner=payload.get('reasoner') or {}
     lines += ['Local reasoning status: '+reasoner.get('status','not recorded')]
     if reasoner.get('reason'):lines += ['Reason: '+reasoner['reason']]
+    if reasoner.get('retry'):
+        lines += ['One model correction attempt followed a potential opposition; the result remains scientifically unvalidated.']
     lines += ['- '+x for x in reasoner.get('critic_warnings',[])]
     for pair in (payload.get('critique') or {}).get('potential_disagreements',[]):
         lines += ['', '### Potential evidence disagreement — requires review',

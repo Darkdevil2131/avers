@@ -56,3 +56,19 @@ def test_supplied_exact_quote_remains_candidate_only(tmp_path,monkeypatch):
     assert result['status']=='completed'
     assert result['answer']==QUOTE
     assert result['scientific_validity']=='unvalidated'
+
+
+def test_correction_attempt_uses_fixed_flag_and_bounded_timeout(tmp_path, monkeypatch):
+    model = tmp_path/'fixture.gguf'; model.write_text('Never loaded')
+    monkeypatch.setenv('ARES_REASONER_MODEL', str(model))
+    captured = {}
+    def fake_run(*args, **kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(returncode=0, stdout=json.dumps(proposal()))
+    monkeypatch.setattr(reasoner.subprocess, 'run', fake_run)
+    result = reasoner.suggest('Coating adhesion', [citation()], retry_opposition=True, timeout_seconds=7)
+    sent = json.loads(captured['input'])
+    assert result['status'] == 'completed'
+    assert sent['retry_opposition'] is True
+    assert set(sent) == {'question', 'evidence', 'retry_opposition'}
+    assert captured['timeout'] == 7
