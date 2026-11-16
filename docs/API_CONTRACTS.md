@@ -1,6 +1,6 @@
 # API contracts
 
-The generated /openapi.json is authoritative for fields and response codes. All data endpoints require Authorization: Bearer <token>. GET /health is a minimal public health response. POST requests use JSON.
+The generated /openapi.json is authoritative for fields and response codes. All data endpoints require Authorization: Bearer <token>. GET /health is a minimal public API/database health response. GET /ready returns 503 when the database is unavailable or queued mode has no recent worker heartbeat. Authenticated GET /runtime returns queue connectivity and model configuration status, not proof of successful inference. POST requests use JSON.
 
 | Resource under /projects/{project_id} | Operations |
 | --- | --- |

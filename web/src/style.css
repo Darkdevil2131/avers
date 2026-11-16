@@ -13,3 +13,4 @@
 @media(max-width:760px){h1{font-size:30px}.workflow-heading{align-items:flex-start}.workflow-heading h2{font-size:19px}.workflow-grid{gap:8px}.workflow-step{padding:14px}.workflow-step h3{font-size:13px}.scene{height:220px}.question-actions{align-items:flex-start}.checkbox{font-size:11px}.question-box textarea{font-size:14px}.page-title{flex-wrap:wrap}.main-content{padding:24px 16px 0}}
 @media(max-width:430px){.workflow-grid{grid-template-columns:1fr}.workflow-heading{flex-wrap:wrap}.step-top{margin-bottom:12px}}
 .build-info{padding:0 0 24px;color:#9badc4;font-size:12px;line-height:1.7}.build-info summary{cursor:pointer}.build-info p{margin:10px 0}.build-info code{overflow-wrap:anywhere}
+.runtime-status{padding:14px 44px;border-bottom:1px solid var(--line);background:#eef1e9;font-size:12px;line-height:1.5}.runtime-status p{margin:0}.runtime-status p+p{margin-top:4px;color:#53645c}@media(max-width:700px){.runtime-status{padding:14px 20px}}

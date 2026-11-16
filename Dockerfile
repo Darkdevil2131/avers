@@ -24,6 +24,5 @@ ENV ORT_DISABLE_TELEMETRY=1 HF_HUB_DISABLE_TELEMETRY=1 DO_NOT_TRACK=1
 COPY --from=frontend /build/ares/static ./ares/static
 RUN mkdir state && chown ares:ares state
 USER 10001
-ENV ARES_DATABASE=/app/state/ares.db
 EXPOSE 8000
-CMD ["uvicorn", "ares.api:app_factory", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "ares.cli", "serve"]

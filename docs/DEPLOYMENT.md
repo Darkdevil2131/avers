@@ -59,3 +59,50 @@ SSE database polling runs in the thread pool with the authenticated request cont
 ## Release boundary
 
 Keep the hard no-charge/no-trial requirement. Do not attach a new paid service, enable paid inference or provision hosting to satisfy a failing check. Before deploying this branch, inspect the existing Railway plan and usage and verify whether GitHub branch/PR changes trigger billable deployments. Publishing a branch is not a verified Railway rollout. The live host, model resources, durable volumes, backup recovery, HTTPS and sustained inference workload still require verification. Scientific selection results in SCIENTIFIC_VALIDATION.md and IMPROVEMENTS_2026_11_12.md remain unchanged by operational hardening.
+
+## API routing and database-worker readiness
+
+The container now starts `python -m ares.cli serve`, binding `0.0.0.0` on the
+host-provided `PORT` (default `8000`). The compiled React client and API routes
+share this origin; the development proxy also forwards `/health`, `/ready` and
+`/runtime`. Configure a proxy's upstream port to match `PORT`.
+
+For queued operation, explicitly set `ARES_QUEUE_MODE=db` and `ARES_DATABASE`
+(or `ARES_APP_DATABASE`) on the API. Set `ARES_WORKER_DATABASE` on the worker,
+using the **same database and schema**, with the separate `ares_worker` role.
+The worker command is `python -m ares.cli worker`; it now rejects an unspecified
+database. With SQLite, both processes must see the same persistent file using
+an absolute path. With PostgreSQL, use the restricted application/worker DSNs
+from the migration instructions above. A generic host `DATABASE_URL` alone is
+rejected instead of silently using SQLite or using an administrator credential.
+The container no longer supplies an implicit `ARES_DATABASE` that masks this
+configuration error. Invalid queue modes and invalid port values fail startup.
+
+Apply the normal administrative PostgreSQL migration before starting this
+version: migration 007 adds `worker_status`. The API role can only read this
+table; the worker role publishes a heartbeat every five seconds. No credential,
+hostname, database URL, project content or model path is returned by the status
+routes.
+
+- `/health`: public API/database liveness. A 200 alone does **not** mean the queue
+  is being processed.
+- `/ready`: public 200 only when the database is reachable and, in queued mode,
+  a worker has a heartbeat at most 30 seconds old in that database. Otherwise 503.
+- `/runtime`: authenticated database, queue and worker status displayed in the
+  workspace. Model configuration comes from the worker, not the API environment.
+
+A worker attached to another database cannot make this API ready. Graceful
+worker shutdown removes its heartbeat; a killed worker becomes stale after
+30 seconds. Keep service clocks synchronized. A recent heartbeat proves a
+connection, not successful inference or forward progress on every job. Read
+run events and reports to verify completed work. A `configured` model status
+checks for the model file and runtime package; report-level inference results
+remain authoritative. Polling times out and clears stale connected UI status
+when the API becomes unreachable.
+
+The connection regression test runs separate API and worker processes, submits
+synthetic source data through HTTP, sends a retrieval request, verifies that a
+worker on another database leaves the job queued, then connects the correct
+worker and checks the saved citations, events and pending memory. It also
+checks that stopping the worker makes readiness fail while saved reports stay
+readable. It does not validate the user's live host or scientific accuracy.

@@ -7,6 +7,7 @@ import Memory from './Memory';
 import ProposalReview, {ExperimentPlan, PriorArt} from './ProposalReview';
 import Workflow from './Workflow';
 import BuildInfo from './BuildInfo';
+import RuntimeStatus from './RuntimeStatus';
 import DisagreementReview, {ReportedExposure} from './DisagreementReview';
 import './style.css';
 const STAGES = {
@@ -223,6 +224,7 @@ export function App() {
       <div className="sidebar-bottom"><span className="avatar">{user?.username.slice(0, 1).toUpperCase() || 'A'}</span><div>{user?.username || 'Private workspace'}<small>Evidence stays reviewable</small></div>{user && <button aria-label="Sign out" onClick={() => location.reload()}>↪</button>}</div>
     </aside>
     <main inert={!user || !!modal}>
+      {user && <RuntimeStatus token={token}/>}
       <header><span>Workspace <span className="slash">/</span> {project?.name || 'Research'}</span><div className="header-right"><span className="status-light"/> {user?.mode || 'Research workspace'} <button className="quiet" onClick={() => setReduced(!reduced)} aria-pressed={reduced}>2D view</button></div></header>
       {error && <div className="error" role="alert">{error}<button onClick={() => setError('')} aria-label="Dismiss error">×</button></div>}
       {streamError && run && <button className="secondary" onClick={() => {

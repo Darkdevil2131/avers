@@ -26,6 +26,8 @@ def main():
         page.get_by_label('Access token').fill(token)
         page.get_by_role('button', name='Open workspace').click()
         expect(page.get_by_role('heading', name='Research, with a record.')).to_be_visible()
+        expect(page.get_by_role('status', name='Server connection')).to_contain_text('Research worker heartbeat received.')
+        expect(page.get_by_role('status', name='Server connection')).to_contain_text('Local model unavailable')
         view = page.get_by_role('button', name='2D view')
         expect(view).to_have_attribute('aria-pressed', 'false')
         expect(page.locator('.scene-canvas canvas')).to_be_visible()
