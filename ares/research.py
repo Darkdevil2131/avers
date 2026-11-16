@@ -125,6 +125,8 @@ class ResearchEngine:
                 else:
                     collection["adaptation"]["decision"] = "budget_exhausted" if stopped() else "no_follow_up"
                 collection["adaptation"]["after"] = evidence_signals(findings, citations, criticism)
+                if before["disagreement_routes"]["review_conflict"]:
+                    collection["adaptation"]["review_required"] = True
                 collector.finish()
 
             event("memory_retrieval", retrieval)
@@ -217,7 +219,7 @@ class ResearchEngine:
                 report["execution"] = {
                     "revision": revision.lower() if re.fullmatch(r"[a-fA-F0-9]{40}", revision) else None,
                     "attempt": claimed["attempts"], "external_collection_requested": bool(claimed["external"]),
-                    "planner_policy": "evidence-triggered-follow-up-v1",
+                    "planner_policy": "context-aware-follow-up-v2",
                 }
                 if any(f['method'] == 'context-weighted-sentence-reranker-v2' for f in findings):
                     from .retrieval import DENSE, RERANKER_MODEL
@@ -261,6 +263,8 @@ class ResearchEngine:
                         f"Potential disagreements: {before['potential_disagreements']} before, "
                         f"{after['potential_disagreements']} after.",
                     ]
+                    if adaptation.get('review_required'):
+                        lines += ['Reviewer records disagree on study context. Resolve the review conflict before interpreting it.']
                 for citation in citations:
                     lines += [f"## [{citation['label']}] {citation['title']}", "",
                               citation["quote"], "", citation["url"],

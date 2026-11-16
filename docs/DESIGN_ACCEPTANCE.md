@@ -75,3 +75,23 @@ Finding text can supply explicit Celsius temperature, relative humidity, and exp
 The published wording development set in `benchmarks/materials_exposure.json` includes eight excerpts with section links and reviewer labels. Running the extractor from `ccf39da` on these excerpts recovered 0 of 14 labeled point values. The updated conditioning rules recover all 14 without emitting values for the three tolerance, range or multi-arm examples. These excerpts were selected to exercise the rule changes, so an independent sample is still needed to estimate error rates. Conditioning, exposure and testing values carry separate stage labels and are compared within the same stage only.
 
 When two opposing coating findings report all three exposure values and exactly one differs, the hypothesis engine can draft a two-group comparison with references to both finding spans. This template skips shared study identifiers, conflicting reviews, and known mismatches in material, outcome, units or measurement. Proposed setpoints, controls and the outcome require review. The plan leaves sample size open until the equivalence margin, variance and power target are specified. This software behavior is tested with synthetic cases. Experiment validity and novelty still need independent review.
+
+### Context-aware follow-up search
+
+The planner uses existing critic results to choose how to spend the remaining
+search slot. Opposing findings with a reviewed context mismatch or explicitly
+different reported conditions trigger a methods and study-conditions search.
+Findings with a shared study identifier stay visible and do not trigger a
+counterevidence search on their own. Thin study coverage can still trigger a
+broader search. Unresolved opposition can trigger counterevidence search, and
+conflicting human reviews are flagged for resolution. Follow-up queries use
+only terms from the submitted question and fixed search terms.
+
+Paired API regressions compare the previous and updated policies on two
+synthetic materials scenarios with the same budget (two searches and three
+document fetches per run). The updated policy retrieves the designated
+temperature-matched candidate in both cases. The old policy retrieves the
+designated unmatched candidate in both cases. This verifies behavior on a
+controlled provider response, not field performance, source independence,
+scientific comparability, or gains on a held-out corpus. Independently labeled
+materials studies and measured live retrieval remain required.

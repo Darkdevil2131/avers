@@ -272,6 +272,7 @@ export function App() {
                     {item.pmcid}: article XML did not report a PMC identifier; identity needs review.
                   </p>)}
                   {report.collection.adaptation && <p>Follow-up: {report.collection.adaptation.decision.replaceAll('_', ' ')} · Candidate study identifiers: {report.collection.adaptation.before.candidate_study_ids} before, {report.collection.adaptation.after.candidate_study_ids} after</p>}
+                  {report.collection.adaptation?.review_required && <p className="warning">Reviewer records disagree on study context. Resolve the review conflict before interpreting it.</p>}
                   <details><summary>Search strategy and queries</summary>{report.collection.queries.map((item,i)=><div key={i}><p>{item.strategy}: {item.query}</p>{item.reason && <p>{item.reason}</p>}{item.provider && <p>Metadata provider: {item.provider}</p>}{item.fallback_used && <p>Europe PMC was unavailable or returned an invalid response; the fallback was used.</p>}</div>)}</details>
                 </section>}
                 {report.findings?.length > 0 && <section><h3>Extracted candidate findings</h3><p>Exact source statements. Scientific meaning and study context still require review.</p>{report.findings.map((f,i)=><article className="citation" key={i}><span>{f.citation} · {f.method}</span><blockquote>{f.statement}</blockquote><p>Measurements found: {f.measurements.join(', ')||'none'}</p><ReportedExposure values={f.reported_exposure}/></article>)}</section>}
