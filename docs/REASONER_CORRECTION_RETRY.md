@@ -1,6 +1,8 @@
 # Bounded correction after a critic rejection
 
-When the local model produces no accepted candidate and the critic flags a potential direction opposition, the research worker may make one further local-model call. It does so only if the run is still owned, not cancelled, and has at least two seconds left in its research deadline. The retry timeout is the smaller of 30 seconds and the time remaining less one second. The model is loaded again, so this can increase latency and compute use. No remote inference API is added.
+The worker limits the first local model call to 90 seconds and the correction to 30 seconds. It also caps each call at the remaining research time minus one second and requires at least two seconds of remaining time. Both calls require an active run lease. A timeout is reported without the executable or model path.
+
+The worker considers one correction when the local model produces no accepted candidate and the critic flags a potential direction opposition. The model loads again for that call, which can increase latency and compute use.
 
 The retry instruction is a fixed system instruction describing the critic's concern; model-generated text is not used as an instruction. The same source-quote checks and critic are applied to the second candidate. Both rejected candidates, when present, remain in the critique; if no candidate passes, the existing replication fallback is used. Reports record the initial attempt and retry status, and the workspace and Markdown export disclose that a correction was attempted. A completed call or a candidate passing the rules does not establish correctness.
 

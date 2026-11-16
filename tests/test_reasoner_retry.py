@@ -1,4 +1,6 @@
 """Synthetic workflow tests with a mocked model; not scientific validation."""
+from types import SimpleNamespace
+
 import pytest
 import ares.research as research
 from ares.agents import proposal_critic
@@ -38,7 +40,7 @@ def test_opposition_gets_one_checked_retry_and_retains_rejections(tmp_path, monk
     pid = project(api)
     source(api, pid, QUOTE)
     report = api.get(f'/projects/{pid}/runs/{run(api, pid)}/report').json()
-    assert len(calls) == 2 and calls[0] == {}
+    assert len(calls) == 2 and calls[0] == {'timeout_seconds': 90}
     assert calls[1]['retry_opposition'] is True and 1 <= calls[1]['timeout_seconds'] <= 30
     assert len(report['critique']['rejected_proposals']) == expected_rejected
     assert report['reasoner']['initial_attempt']['status'] == 'completed'
@@ -81,5 +83,39 @@ def test_accepted_first_candidate_is_not_retried(tmp_path, monkeypatch):
     pid = project(api)
     source(api, pid, QUOTE)
     report = api.get(f'/projects/{pid}/runs/{run(api, pid)}/report').json()
-    assert calls == [{}]
+    assert calls == [{'timeout_seconds': 90}]
     assert 'retry' not in report['reasoner']
+
+
+@pytest.mark.parametrize('retrieval_seconds,expected_timeout', [(175, 4), (179.5, None)])
+def test_first_inference_respects_time_left_after_retrieval(tmp_path, monkeypatch, retrieval_seconds, expected_timeout):
+    elapsed = 0
+    original_search = research.hybrid_search
+    monkeypatch.setattr(research, 'time', SimpleNamespace(
+        time=research.time.time, monotonic=lambda: elapsed,
+    ))
+
+    def slow_search(*args, **kwargs):
+        nonlocal elapsed
+        result = original_search(*args, **kwargs)
+        elapsed = retrieval_seconds
+        return result
+
+    calls = []
+
+    def timed_out(question, citations, **options):
+        calls.append(options['timeout_seconds'])
+        elapsed_at_timeout = retrieval_seconds + options['timeout_seconds']
+        assert elapsed_at_timeout < 180
+        return {'status': 'rejected', 'reason': 'Local inference exceeded its time budget', 'proposals': []}
+
+    monkeypatch.setattr(research, 'hybrid_search', slow_search)
+    monkeypatch.setattr(research, 'suggest', timed_out)
+    api = client(tmp_path)
+    pid = project(api)
+    source(api, pid, QUOTE)
+    report = api.get(f'/projects/{pid}/runs/{run(api, pid)}/report').json()
+    assert calls == ([] if expected_timeout is None else [expected_timeout])
+    assert report['reasoner']['status'] == ('cancelled_or_budget_exhausted' if expected_timeout is None else 'rejected')
+    assert report['hypotheses'][0]['kind'] == 'replication_candidate'
+    assert report['citations'][0]['quote'] == QUOTE

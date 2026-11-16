@@ -1,4 +1,5 @@
 import json
+import subprocess
 from types import SimpleNamespace
 import pytest
 from ares import local_reasoner as reasoner
@@ -23,3 +24,17 @@ def test_budget_failure_is_disclosed_without_generated_text(tmp_path,monkeypatch
     result=reasoner.suggest('Question',[{'label':'S1','source_id':'s','quote':'A source observation with enough text.'}])
     assert result['status']=='rejected' and result['proposals']==[]
     assert 'output budget' in result['reason']
+
+
+def test_timeout_reason_omits_model_and_executable_paths(tmp_path, monkeypatch):
+    model = tmp_path/'private-model.gguf'
+    model.touch()
+    monkeypatch.setenv('ARES_REASONER_MODEL', str(model))
+
+    def time_out(command, **kwargs):
+        raise subprocess.TimeoutExpired(command, kwargs['timeout'])
+
+    monkeypatch.setattr(reasoner.subprocess, 'run', time_out)
+    result = reasoner.suggest('Question', [{'label': 'S1', 'source_id': 's', 'quote': 'A substantive observation.'}],
+                              timeout_seconds=3)
+    assert result == {'status': 'rejected', 'reason': 'Local inference exceeded its time budget', 'proposals': []}

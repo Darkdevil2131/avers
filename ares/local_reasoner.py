@@ -44,7 +44,9 @@ def suggest(question,citations, *, retry_opposition=False, timeout_seconds=90):
                 'answer_status':'exact source extract' if data['answer'].strip() and data['answer'] in supplied['text'] else 'generated narrative rejected: not a nonempty exact source extract',
                 'critic_warnings':['Model mechanisms and falsification logic have not been scientifically validated; proposals require expert review'],
                 'proposals':[proposal],'scientific_validity':'unvalidated'}
-    except (subprocess.TimeoutExpired,ValueError,KeyError,TypeError) as exc:
+    except subprocess.TimeoutExpired:
+        return {'status':'rejected','reason':'Local inference exceeded its time budget','proposals':[]}
+    except (ValueError,KeyError,TypeError) as exc:
         return {'status':'rejected','reason':str(exc)[:300],'proposals':[]}
 def completion_payload(result):
     """Never parse or repair a truncated proposal into something that looks valid."""
