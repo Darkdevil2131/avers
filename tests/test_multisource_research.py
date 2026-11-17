@@ -110,3 +110,37 @@ def test_remote_discovery_overlaps_database_retrieval_and_failure_preserves_loca
     assert 0 < timing['overlap_ms'] <= min(timing['project_evidence_ms'], timing['literature_discovery_ms'])
     events = api.get(route + '/events').json()
     assert next(item['payload'] for item in events if item['stage'] == 'research_branches_joined') == timing
+
+
+def test_document_tasks_overlap_and_store_success_when_sibling_fails():
+    from ares.collection import EvidenceCollector
+
+    barrier = threading.Barrier(2)
+    coordinator = threading.get_ident()
+    recorded, stored = [], []
+
+    class Provider:
+        concurrent_fulltext = True
+
+        def fulltext(self, identifier):
+            assert threading.get_ident() != coordinator
+            barrier.wait(timeout=3)
+            if identifier == 'PMC2':
+                raise ProviderError('Synthetic fetch failure')
+            return {'text': 'First document', 'license_status': 'fixture',
+                    'document': {'references': ['PMC3']}}
+
+    def store(records):
+        assert threading.get_ident() == coordinator
+        stored.extend(records)
+        return ['source1']
+
+    collector = EvidenceCollector(Provider(), store, lambda stage, payload: recorded.append((stage, payload)),
+                                  lambda: False, True)
+    collector.fetch([('PMC1', 0), ('PMC2', 0), ('PMC1', 0)], 2)
+    assert collector.audit['fulltext_attempted'] == 2
+    assert collector.audit['fulltext_stored'] == 1
+    assert collector.audit['errors'][0]['pmcid'] == 'PMC2'
+    assert len(stored) == 1
+    assert collector.references == [('PMC3', 1)]
+    assert ('parallel_document_fetch', {'documents': ['PMC1', 'PMC2']}) in recorded

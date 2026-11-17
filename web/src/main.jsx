@@ -15,6 +15,7 @@ const STAGES = {
   reasoner_started: 'Preparing local reasoning', reasoner_completed: 'Local reasoning finished', planner_decision: 'Research strategy adjusted', queued: 'Research queued', plan: 'Research plan created',
   external_search_started: 'Searching Europe PMC',
   spider_fetch: 'Fetching open-access document', document_ingested: 'Full text stored', document_rejected: 'Document unavailable or license rejected', memory_retrieval: 'Retrieving project evidence', extract: 'Extracting candidate findings', critic: 'Checking evidence limits', hypothesize: 'Proposing follow-up tests', external_search_completed: 'Metadata received', external_search_failed: 'Source unavailable',
+  parallel_document_fetch: 'Fetching documents in parallel',
   research_branches_joined: 'Project and literature searches joined',
   retrieval_started: 'Searching project evidence', retrieve: 'Project passages retrieved', audit: 'Citation spans checked',
   report: 'Report saved', failed: 'Research failed', cancelled: 'Research cancelled',

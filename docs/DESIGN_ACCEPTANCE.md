@@ -105,8 +105,11 @@ the evidence after full-text collection. Analysis, follow-up query selection,
 and report publication depend on those results and remain ordered. A failed
 metadata search leaves the project results available. The run records each
 initial task's duration and their actual overlap in milliseconds. This overlap
-is not a measure of whole-run speedup. Work is concurrent inside the worker,
-and no other machine or paid service is required.
+is not a measure of whole-run speedup. The collector also fetches at most
+two eligible documents concurrently, spaces request starts per provider,
+and stores each result in frontier order. A failed fetch does not discard a
+successful sibling. Work is concurrent inside the worker, and no other
+machine or paid service is required.
 
 In research runs, the keyword shortlist limits passages per exact source
 snapshot, dense retrieval prioritizes different study identifiers before
