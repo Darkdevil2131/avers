@@ -2,7 +2,7 @@
 from contextvars import ContextVar
 from contextlib import contextmanager
 import re
-from .database import Database as SQLiteDatabase, ranked_passages_sql
+from .database import Database as SQLiteDatabase, StorageUnavailable, ranked_passages_sql
 
 PRINCIPAL=ContextVar('ares_principal',default='')
 
@@ -46,10 +46,17 @@ class PostgresDatabase(SQLiteDatabase):
     def connect(self):
         import psycopg
         from psycopg.rows import dict_row
-        with psycopg.connect(self.dsn,row_factory=dict_row,connect_timeout=10) as connection:
-            connection.execute("SELECT set_config('ares.user',%s,true)",(PRINCIPAL.get(),))
-            connection.execute("SET LOCAL statement_timeout='30s'")
-            yield Connection(connection)
+        try:
+            with psycopg.connect(self.dsn,row_factory=dict_row,connect_timeout=10) as connection:
+                connection.execute("SELECT set_config('ares.user',%s,true)",(PRINCIPAL.get(),))
+                connection.execute("SET LOCAL statement_timeout='30s'")
+                yield Connection(connection)
+        except psycopg.OperationalError as exc:
+            code = exc.sqlstate
+            if code is None or code.startswith('08') or code in {'57P01', '57P02', '57P03', '53300'}:
+                raise StorageUnavailable() from exc
+            raise
+
     def index_source(self,db,source):
         text=source['text']
         for start in range(0,len(text),900):

@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Res
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
-from .database import AccessDenied, StorageBudget, Database, now
+from .database import AccessDenied, StorageBudget, StorageUnavailable, Database, now
 from .evidence import ClaimInput, EvidenceInput, HypothesisInput, assess
 from .providers import EuropePMC
 from .pdf_documents import DocumentError, DocumentUnavailable, parse_pdf
@@ -24,6 +24,9 @@ from .retrieval import hybrid_search
 from .security import BodyLimit, IngressLimit, RateLimit
 from .tools import CAPABILITIES, execute
 from .runtime import runtime_status
+STORAGE_UNAVAILABLE_MESSAGE = "Research storage is temporarily unavailable. Please retry shortly."
+
+
 class ProjectInput(BaseModel):
     name: str = Field(min_length=1, max_length=200)
 class RunInput(BaseModel):
@@ -63,6 +66,11 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
     @app.exception_handler(StorageBudget)
     async def storage_error(request, exc):
         return JSONResponse({"detail":str(exc)},status_code=413)
+    @app.exception_handler(StorageUnavailable)
+    async def unavailable_storage(request, exc):
+        return JSONResponse({"detail": STORAGE_UNAVAILABLE_MESSAGE}, status_code=503,
+                            headers={"Retry-After": "5"})
+
     @app.exception_handler(AccessDenied)
     async def access_error(request, exc):
         return JSONResponse({"detail": "Project not found or action unavailable"}, status_code=404)
@@ -232,11 +240,15 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             for _ in range(600):
                 if await request.is_disconnected():
                     return
-                batch = await run_in_threadpool(events, project_id, run_id, cursor, user)
-                for event in batch:
-                    cursor = event["id"]
-                    yield f"id: {cursor}\ndata: {json.dumps(event)}\n\n"
-                state = await run_in_threadpool(run, project_id, run_id, user)
+                try:
+                    batch = await run_in_threadpool(events, project_id, run_id, cursor, user)
+                    for event in batch:
+                        cursor = event["id"]
+                        yield f"id: {cursor}\ndata: {json.dumps(event)}\n\n"
+                    state = await run_in_threadpool(run, project_id, run_id, user)
+                except StorageUnavailable:
+                    yield f"event: unavailable\ndata: {json.dumps({'detail': STORAGE_UNAVAILABLE_MESSAGE})}\n\n"
+                    return
                 if state["status"] in {"completed", "failed", "cancelled"}:
                     yield f"event: done\ndata: {json.dumps({'status': state['status']})}\n\n"
                     return

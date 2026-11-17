@@ -149,6 +149,8 @@ jobs:
               except (OSError,http.client.HTTPException):time.sleep(1)
           else:raise RuntimeError('Report unavailable after restart')
           PYTHON
+      - name: Verify recovery after a disposable PostgreSQL outage
+        run: python scripts/compose_outage_check.py
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
