@@ -64,7 +64,7 @@ def test_report_screens_literature_and_replays_saved_artifact(tmp_path, monkeypa
     assert 'attachment' in archive.headers['content-disposition']
     bundle = archive.json()
     assert replay_markdown(bundle) == live['markdown']
-    assert bundle['report']['execution']['planner_policy'] == 'evidence-triggered-follow-up-v1'
+    assert bundle['report']['execution']['planner_policy'] == 'context-aware-follow-up-v2'
     archive_path, output_path = tmp_path/'bundle.json', tmp_path/'report.md'
     archive_path.write_bytes(archive.content)
     subprocess.run([sys.executable,'-m','ares.replay',str(archive_path),str(output_path)],

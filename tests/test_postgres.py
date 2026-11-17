@@ -88,3 +88,25 @@ def test_postgres_reviewed_claim_report_lifecycle():
     app = create_app(os.environ['ARES_TEST_POSTGRES'], credentials)
     with TestClient(app, headers={'Authorization': 'Bearer ' + credentials['claim-review']}) as api:
         exercise_claim_run(api)
+
+
+def test_postgres_worker_heartbeat_cannot_be_forged_by_api():
+    from ares.database import Database
+    from ares.runtime import WorkerHeartbeat, record_heartbeat, runtime_status
+    from uuid import uuid4
+    from psycopg.errors import InsufficientPrivilege
+
+    worker_dsn = os.environ.get('ARES_TEST_POSTGRES_WORKER')
+    if not worker_dsn:
+        pytest.skip('Disposable worker role not configured')
+    app_db = Database(os.environ['ARES_TEST_POSTGRES'])
+    worker_db = Database(worker_dsn)
+    with pytest.raises(InsufficientPrivilege):
+        record_heartbeat(app_db, str(uuid4()))
+    with WorkerHeartbeat(worker_db):
+        assert runtime_status(app_db, False)['worker'] == 'connected'
+        for statement in ('UPDATE worker_status SET last_seen=0', 'DELETE FROM worker_status'):
+            with pytest.raises(InsufficientPrivilege):
+                with app_db.connect() as db:
+                    db.execute(statement)
+    assert runtime_status(app_db, False)['ready'] is False

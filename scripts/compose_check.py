@@ -9,10 +9,14 @@ deadline=time.monotonic()+90
 last_error=None
 while time.monotonic()<deadline:
     try:
-        if request('/health')['status']=='ok':break
+        if request('/ready')['status']=='ready':break
     except (OSError,http.client.HTTPException) as exc:
         last_error=type(exc).__name__;time.sleep(1)
 else:raise RuntimeError('Compose API did not become ready: '+str(last_error))
+runtime=request('/runtime')
+assert runtime['database']=='connected' and runtime['worker']=='connected'
+assert runtime['queue_mode']=='db' and runtime['active_workers']>=1
+assert runtime['reasoning']==['not_configured']
 project=request('/projects',{'name':'Compose end-to-end fixture'})['id']
 text='Humidity reduced coating stability by 20% in a controlled synthetic experiment. This is test data, not scientific evidence.'
 source=request(f'/projects/{project}/sources',{'url':'https://example.org/compose-fixture','text':text,'license_status':'synthetic fixture'})

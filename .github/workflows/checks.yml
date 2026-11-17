@@ -51,10 +51,12 @@ jobs:
           import os,psycopg
           with psycopg.connect(os.environ['ARES_ADMIN_DATABASE']) as db:
               db.execute("ALTER ROLE ares_app PASSWORD 'fixture_runtime_only'")
+              db.execute("ALTER ROLE ares_worker PASSWORD 'fixture_worker_only'")
           PY
       - name: Verify database-enforced isolation
         env:
           ARES_TEST_POSTGRES: postgresql://ares_app:fixture_runtime_only@localhost:5432/ares_test
+          ARES_TEST_POSTGRES_WORKER: postgresql://ares_worker:fixture_worker_only@localhost:5432/ares_test
         run: python -m pytest tests/test_postgres.py -v
       - name: Restore PostgreSQL backup and verify retained isolation
         env:
@@ -104,7 +106,7 @@ jobs:
         run: docker build -t ares-check .
       - name: Check application starts without external services
         run: |
-          docker run -d --name ares-check -p 127.0.0.1:8000:8000 -e 'ARES_CREDENTIALS={"fixture":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}' ares-check
+          docker run -d --name ares-check -p 127.0.0.1:8000:8087 -e PORT=8087 -e 'ARES_CREDENTIALS={"fixture":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}' ares-check
           for attempt in $(seq 1 20); do
             if curl --fail --silent http://127.0.0.1:8000/health; then exit 0; fi
             sleep 1

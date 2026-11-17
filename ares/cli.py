@@ -8,6 +8,7 @@ from pathlib import Path
 from .database import Database
 from .providers import EuropePMC
 from .research import ResearchEngine
+from .runtime import WorkerHeartbeat
 def run_worker(engine, stop=None):
     """Keep independent jobs moving after a failed job; back off on repeated errors."""
     stop = stop if stop is not None else threading.Event()
@@ -27,16 +28,30 @@ def run_worker(engine, stop=None):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["worker", "backup", "verify-backup"])
+    parser.add_argument("command", choices=["serve", "worker", "backup", "verify-backup"])
     parser.add_argument("--file", type=Path)
     args = parser.parse_args()
-    path = os.environ.get("ARES_WORKER_DATABASE",os.environ.get("ARES_DATABASE", "state/ares.db"))
+    if args.command == "serve":
+        import uvicorn
+        try:
+            port = int(os.environ.get("PORT", "8000"))
+        except ValueError:
+            parser.error("PORT must be an integer")
+        if not 1 <= port <= 65535:
+            parser.error("PORT must be between 1 and 65535")
+        uvicorn.run("ares.api:app_factory", factory=True, host="0.0.0.0", port=port)
+        return
+    path = os.environ.get("ARES_WORKER_DATABASE") or os.environ.get("ARES_DATABASE")
+    if args.command == "worker" and not path:
+        parser.error("Set ARES_WORKER_DATABASE or ARES_DATABASE to the same database used by the API")
+    path = path or "state/ares.db"
     if args.command == "worker":
         engine = ResearchEngine(Database(path), EuropePMC())
         stop = threading.Event()
         for signum in (signal.SIGTERM, signal.SIGINT):
             signal.signal(signum, lambda *_: stop.set())
-        run_worker(engine, stop)
+        with WorkerHeartbeat(engine.database):
+            run_worker(engine, stop)
     else:
         if path.startswith(("postgresql://","postgres://")):
             parser.error("Use pg_dump/pg_restore with the host backup operator for PostgreSQL")

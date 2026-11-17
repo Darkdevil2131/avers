@@ -23,6 +23,7 @@ from .replay import FORMAT as REPLAY_FORMAT, MAX_BUNDLE_BYTES, MAX_SOURCE_BYTES,
 from .retrieval import hybrid_search
 from .security import BodyLimit, IngressLimit, RateLimit
 from .tools import CAPABILITIES, execute
+from .runtime import runtime_status
 class ProjectInput(BaseModel):
     name: str = Field(min_length=1, max_length=200)
 class RunInput(BaseModel):
@@ -105,11 +106,27 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
             # Driver messages can contain connection details; never return them publicly.
             return JSONResponse({"status": "unavailable"}, status_code=503)
         return {"status": "ok", "mode": "deterministic-research", "version": "0.3.0"}
+    def get_runtime():
+        try:
+            return runtime_status(storage, auto_process)
+        except Exception:
+            return {"database": "unavailable", "worker": "unknown", "ready": False}
+
+    @app.get("/ready")
+    def ready():
+        status = get_runtime()
+        return JSONResponse({"status": "ready" if status["ready"] else "unavailable"},
+                            status_code=200 if status["ready"] else 503)
+
+    @app.get("/runtime")
+    def runtime(user=Depends(authenticate)):
+        return get_runtime()
+
     @app.get("/session")
     def session(user=Depends(authenticate)):
         revision = os.environ.get('ARES_BUILD_REVISION', '')
         revision = revision.lower() if re.fullmatch(r'[a-fA-F0-9]{40}', revision) else 'unknown'
-        return {"username": user, "mode": "local-model-assisted" if os.environ.get("ARES_REASONER_MODEL") else "extractive", "paid_services": False,
+        return {"username": user, "mode": "worker-managed" if not auto_process else "local-model-assisted" if os.environ.get("ARES_REASONER_MODEL") else "extractive", "paid_services": False,
                 "build_revision": revision}
     @app.post("/projects", status_code=201)
     def create_project(body: ProjectInput, user=Depends(limited)):
@@ -488,5 +505,12 @@ def create_app(database: Path, credentials: dict[str, str], *, provider=None, au
     return app
 def app_factory():
     credentials = json.loads(os.environ.get("ARES_CREDENTIALS", "{}"))
-    return create_app(os.environ.get("ARES_DATABASE", "state/ares.db"), credentials,
-                      auto_process=os.environ.get("ARES_QUEUE_MODE", "inline") == "inline")
+    mode = os.environ.get("ARES_QUEUE_MODE", "inline")
+    if mode not in {"inline", "db"}:
+        raise ValueError("ARES_QUEUE_MODE must be inline or db")
+    database = os.environ.get("ARES_DATABASE") or os.environ.get("ARES_APP_DATABASE")
+    if not database and os.environ.get("DATABASE_URL"):
+        raise ValueError("Configure ARES_DATABASE with the restricted application DSN and ARES_WORKER_DATABASE for the worker")
+    if not database and mode == "db":
+        raise ValueError("Queued mode requires ARES_DATABASE or ARES_APP_DATABASE pointing to the worker's database")
+    return create_app(database or "state/ares.db", credentials, auto_process=mode == "inline")

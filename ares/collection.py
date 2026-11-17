@@ -15,10 +15,25 @@ def evidence_signals(findings, citations, criticism):
         study_identifier(by_label[finding['citation']]['study_id'])
         for finding in findings if by_label[finding['citation']].get('study_id')
     }
+    pairs = criticism['potential_disagreements']
+    routes = {'context_mismatch': 0, 'shared_study': 0, 'review_conflict': 0, 'unresolved': 0}
+    for pair in pairs:
+        state = pair.get('reviewed_context', {}).get('state')
+        if pair.get('same_study_identifier'):
+            routes['shared_study'] += 1
+        elif state == 'review-conflict':
+            routes['review_conflict'] += 1
+        elif state == 'context-mismatched' or any(
+            condition['state'] == 'differs' for condition in pair.get('reported_exposure_comparison', [])
+        ):
+            routes['context_mismatch'] += 1
+        else:
+            routes['unresolved'] += 1
     return {
         'candidate_findings': len(findings),
         'candidate_study_ids': len(studies),
-        'potential_disagreements': len(criticism['potential_disagreements']),
+        'potential_disagreements': len(pairs),
+        'disagreement_routes': routes,
     }
 
 
@@ -39,9 +54,13 @@ def follow_up(question, signals):
     if not tokens:
         return None
     base = ' AND '.join(f'"{word}"' for word in tokens)
-    if signals['potential_disagreements']:
+    routes = signals['disagreement_routes']
+    if routes['unresolved']:
         return ('counterevidence', base + ' AND (replication OR "no effect" OR disagreement OR comparison)',
-                'The first retrieval flagged potentially opposing findings.')
+                'The first retrieval flagged opposing findings without a known shared study identifier or documented context mismatch.')
+    if routes['context_mismatch']:
+        return ('compare_study_conditions', base + ' AND ("test conditions" OR protocol OR "study design")',
+                'Opposing findings differ in reviewed context or explicitly reported conditions. Search for methods and comparable evidence.')
     if signals['candidate_study_ids'] < 2:
         return ('broaden_search', ' OR '.join(f'"{word}"' for word in tokens),
                 'The first retrieval found candidates from fewer than two study identifiers.')

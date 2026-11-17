@@ -45,6 +45,9 @@ def migrate(dsn):
           CREATE INDEX IF NOT EXISTS sources_project_idx ON sources(project_id);
           CREATE INDEX IF NOT EXISTS run_events_run_idx ON run_events(run_id,id);
           CREATE INDEX IF NOT EXISTS memberships_user_idx ON memberships(username,project_id);''')
+        db.execute('''REVOKE ALL ON worker_status FROM PUBLIC,ares_app,ares_worker;
+                      GRANT SELECT ON worker_status TO ares_app;
+                      GRANT SELECT,INSERT,UPDATE,DELETE ON worker_status TO ares_worker;''')
         scopes={
           'projects':'id','memberships':'project_id','sources':'project_id','runs':'project_id','passages':'project_id',
           'run_state':'project_id','audit_events':'project_id','embeddings':'project_id','claims':'project_id','hypotheses':'project_id','research_memory':'project_id','feedback':'project_id',

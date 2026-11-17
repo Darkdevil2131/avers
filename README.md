@@ -31,6 +31,8 @@ export ARES_DATABASE=state/ares.db
 ```
 Open the hosted environment's authenticated port preview for port 8000. The generated frontend is served by FastAPI. `npm run build` is required before starting it. Built assets and dependency directories are reproducible outputs, excluded from source control.
 For durable background processing, set `ARES_QUEUE_MODE=db` before starting the API and run `.venv/bin/python -m ares.cli worker` in a second process sharing `ARES_DATABASE`. One worker is recommended. Inline mode is convenient for development; interrupted inline jobs require the worker to recover them.
+
+Use an absolute SQLite path shared by both processes, or separate restricted PostgreSQL roles pointing to the same database. `/ready` detects missing or stale worker connections; the workspace displays authenticated `/runtime` status. `/health` alone only checks API/database liveness. The container respects the host's `PORT`; apply the latest PostgreSQL migration before upgrading. See [connection and routing setup](docs/DEPLOYMENT.md#api-routing-and-database-worker-readiness).
 Use `/docs` or `/openapi.json` for the API schema. These expose endpoint definitions, not credentials or research content.
 ## Verification
 ```bash
