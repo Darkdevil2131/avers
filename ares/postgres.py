@@ -2,7 +2,7 @@
 from contextvars import ContextVar
 from contextlib import contextmanager
 import re
-from .database import Database as SQLiteDatabase
+from .database import Database as SQLiteDatabase, ranked_passages_sql
 
 PRINCIPAL=ContextVar('ares_principal',default='')
 
@@ -55,16 +55,18 @@ class PostgresDatabase(SQLiteDatabase):
         for start in range(0,len(text),900):
             end=min(start+1000,len(text))
             db.execute('INSERT OR IGNORE INTO passages VALUES(?,?,?,?,?,?)',(f"{source['id']}:{start}",source['id'],source['project_id'],start,end,text[start:end]))
-    def search(self,db,project_id,question,limit=8):
+    def search(self,db,project_id,question,limit=8, *, per_snapshot=None):
         from .database import STOPWORDS
         terms=list(dict.fromkeys(t.lower() for t in re.findall(r'\w+',question) if len(t)>2 and t.lower() not in STOPWORDS))[:30]
         if not terms:return []
         query=' | '.join(terms)
-        return [dict(r) for r in db.execute('''SELECT p.*,s.url,s.digest,s.license_status,s.created_at AS retrieved_at,
+        matches = '''SELECT p.*,s.url,s.digest,s.license_status,s.created_at AS retrieved_at,
             coalesce(d.title,s.url) AS title,coalesce(d.study_id,s.url) AS study_id,coalesce(d.origin,'user_supplied') AS origin,
             coalesce((SELECT max(id) FROM source_reviews WHERE source_id=s.id),0) AS review_version,
             -ts_rank_cd(to_tsvector('english',p.text),to_tsquery('english',?)) AS rank
             FROM passages p JOIN sources s ON s.id=p.source_id LEFT JOIN source_details d ON d.source_id=s.id
             WHERE p.project_id=? AND to_tsvector('english',p.text) @@ to_tsquery('english',?)
             AND coalesce((SELECT status FROM source_reviews WHERE source_id=s.id ORDER BY id DESC LIMIT 1),'active')='active'
-            ORDER BY rank,p.id LIMIT ?''',(query,project_id,query,limit))]
+        '''
+        parameters = (query, project_id, query, per_snapshot, limit) if per_snapshot else (query, project_id, query, limit)
+        return [dict(r) for r in db.execute(ranked_passages_sql(matches, per_snapshot), parameters)]

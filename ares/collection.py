@@ -1,6 +1,7 @@
 """Bounded collection and evidence-triggered follow-up planning."""
 
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 from .providers import ProviderError
 from .study_identifiers import study_identifier
@@ -86,7 +87,15 @@ class EvidenceCollector:
         self.seen = set()
         self.references = []
 
-    def collect(self, strategy, query, reason, fetch_limit):
+    def discover(self, query):
+        """Discover metadata without mutating the project or writing events."""
+        search = getattr(self.provider, 'search_with_provenance', None)
+        if callable(search):
+            found, provenance = search(query)
+            return list(found), provenance
+        return list(self.provider.search(query)), {}
+
+    def collect(self, strategy, query, reason, fetch_limit, *, discovery=None):
         if self.stopped():
             self.audit['bounded'] = True
             return
@@ -95,13 +104,8 @@ class EvidenceCollector:
         self.audit['queries'].append(entry)
         search_succeeded = True
         try:
-            search_with_provenance = getattr(self.provider, 'search_with_provenance', None)
-            if callable(search_with_provenance):
-                found, provenance = search_with_provenance(query)
-                records = list(found)
-                entry.update(provenance)
-            else:
-                records = list(self.provider.search(query))
+            records, provenance = self.discover(query) if discovery is None else discovery()
+            entry.update(provenance)
         except ProviderError as exc:
             search_succeeded = False
             message = str(exc)[:300]
@@ -138,45 +142,64 @@ class EvidenceCollector:
         self.fetch(frontier, fetch_limit)
 
     def fetch(self, frontier, limit):
+        width = 2 if getattr(self.provider, 'concurrent_fulltext', False) is True else 1
         while frontier and len(self.seen) < limit and not self.stopped():
-            pmcid, depth = frontier.pop(0)
-            if pmcid in self.seen:
+            batch = []
+            while frontier and len(batch) < width and len(self.seen) < limit:
+                pmcid, depth = frontier.pop(0)
+                if pmcid in self.seen:
+                    continue
+                self.seen.add(pmcid)
+                batch.append((pmcid, depth))
+                self.audit['fulltext_attempted'] += 1
+                self.event('spider_fetch', {'pmcid': pmcid, 'depth': depth, 'source': 'Europe PMC open-access API'})
+            if not batch:
                 continue
-            self.seen.add(pmcid)
-            self.audit['fulltext_attempted'] += 1
-            self.event('spider_fetch', {'pmcid': pmcid, 'depth': depth, 'source': 'Europe PMC open-access API'})
-            try:
-                document = self.provider.fulltext(pmcid)
-            except ProviderError as exc:
-                message = str(exc)[:300]
-                details = {'pmcid': pmcid, 'message': message}
-                if exc.attempts:
-                    details['attempts'] = exc.attempts
-                self.audit['errors'].append({'stage': 'fulltext', **details})
-                self.event('document_rejected', details)
-                continue
-            if self.stopped():
-                self.audit['bounded'] = True
-                break
-            source_id, = self.store_sources([document])
-            self.audit['fulltext_stored'] += 1
-            details = {'source_id': source_id, 'pmcid': pmcid,
-                       'characters': len(document['text']), 'license': document['license_status']}
-            metadata = document.get('document', {})
-            identity = metadata.get('identity_status')
-            if identity:
-                details['identity_status'] = identity
-            if identity == 'not_reported':
-                self.audit['identity_unverified'].append({'pmcid': pmcid, 'source_id': source_id})
-            attempts = metadata.get('fulltext_attempts')
-            if attempts:
-                details['attempts'] = attempts
-                self.audit['fallbacks'].append({'pmcid': pmcid, 'source_id': source_id, 'attempts': attempts})
-            self.event('document_ingested', details)
-            if depth == 0:
-                frontier.extend((ref, 1) for ref in document['document']['references'][:2]
-                                if ref not in self.seen)
+            if len(batch) > 1:
+                self.event('parallel_document_fetch', {'documents': [pmcid for pmcid, _ in batch]})
+                with ThreadPoolExecutor(max_workers=width) as pool:
+                    results = list(pool.map(self.download, (pmcid for pmcid, _ in batch)))
+            else:
+                results = [self.download(batch[0][0])]
+            for (pmcid, depth), result in zip(batch, results):
+                if self.stopped():
+                    self.audit['bounded'] = True
+                    break
+                self.accept_document(frontier, pmcid, depth, result)
         self.references = [(pmcid, depth) for pmcid, depth in frontier if pmcid not in self.seen]
+
+    def download(self, pmcid):
+        try:
+            return self.provider.fulltext(pmcid)
+        except ProviderError as exc:
+            return exc
+
+    def accept_document(self, frontier, pmcid, depth, document):
+        if isinstance(document, ProviderError):
+            details = {'pmcid': pmcid, 'message': str(document)[:300]}
+            if document.attempts:
+                details['attempts'] = document.attempts
+            self.audit['errors'].append({'stage': 'fulltext', **details})
+            self.event('document_rejected', details)
+            return
+        source_id, = self.store_sources([document])
+        self.audit['fulltext_stored'] += 1
+        details = {'source_id': source_id, 'pmcid': pmcid,
+                   'characters': len(document['text']), 'license': document['license_status']}
+        metadata = document.get('document', {})
+        identity = metadata.get('identity_status')
+        if identity:
+            details['identity_status'] = identity
+        if identity == 'not_reported':
+            self.audit['identity_unverified'].append({'pmcid': pmcid, 'source_id': source_id})
+        attempts = metadata.get('fulltext_attempts')
+        if attempts:
+            details['attempts'] = attempts
+            self.audit['fallbacks'].append({'pmcid': pmcid, 'source_id': source_id, 'attempts': attempts})
+        self.event('document_ingested', details)
+        if depth == 0:
+            frontier.extend((ref, 1) for ref in document['document']['references'][:2]
+                            if ref not in self.seen)
 
     def finish(self):
         if self.references:

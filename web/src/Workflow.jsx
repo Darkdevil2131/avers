@@ -1,22 +1,26 @@
 import React from 'react';
 const phases=[
   {name:'Research planner',kind:'Bounded policy',stages:['plan','planner_decision'],detail:p=>p.reason||p.plan?.task_type||'Research objective recorded'},
-  {name:'Literature collector',kind:'Open-access APIs',stages:['external_search_started','external_search_completed','spider_fetch','document_ingested','document_rejected','external_search_failed','collection_summary'],detail:p=>p.message||p.status||p.pmcid||(p.count!==undefined?`${p.count} metadata records`:'Collection requested')},
-  {name:'Evidence retrieval',kind:'Project RAG',stages:['memory_retrieval','retrieve','audit'],detail:p=>p.exact_spans_checked!==undefined?`${p.exact_spans_checked} citation spans checked`:p.passages!==undefined?`${p.passages} passages retrieved`:p.reason||p.mode||'Retrieval recorded'},
+  {name:'Literature collector',kind:'Open-access APIs',stages:['external_search_started','external_search_completed','spider_fetch','parallel_document_fetch','document_ingested','document_rejected','external_search_failed','collection_summary'],detail:p=>p.message||p.status||p.pmcid||(p.documents ? `Fetching ${p.documents.length} documents` : null)||(p.count!==undefined?`${p.count} metadata records`:'Collection requested')},
+  {name:'Evidence retrieval',kind:'Project RAG',stages:['retrieval_started','memory_retrieval','retrieve','audit'],detail:p=>p.exact_spans_checked!==undefined?`${p.exact_spans_checked} citation spans checked`:p.passages!==undefined?`${p.passages} passages retrieved`:p.reason||p.mode||'Retrieval recorded'},
   {name:'Hypothesis proposer',kind:'Optional local model',stages:['reasoner_started','reasoner_completed','hypothesize'],detail:p=>p.reason||p.status||(p.proposals!==undefined?`${p.proposals} ${p.type}`:'Inference requested')},
   {name:'Evidence critic',kind:'Rules · human review required',stages:['critic'],detail:p=>p.reason||'Review decision recorded'},
   {name:'Report & memory',kind:'Persistent evidence record',stages:['report'],detail:p=>p.assessment ? 'Report saved · ' + p.assessment : 'Report saved'},
 ];
 export default function Workflow({events=[],run}){
+  const joined = events.findLast(event => event.stage === 'research_branches_joined');
   return <section className="workflow" aria-label="Research workflow">
     <div className="workflow-heading"><div><p className="eyebrow">RESEARCH OPERATIONS</p><h2>One objective. An inspectable workflow.</h2></div><span className="run-status">{run?.status||'No run selected'}</span></div>
     <p className="workflow-note">These are the implemented research roles. Status comes from recorded events; it does not measure intelligence or scientific correctness.</p>
+    {joined && <p className="workflow-note">
+      Project evidence lookup and literature discovery overlapped by {joined.payload.overlap_ms} ms.
+    </p>}
     <div className="workflow-grid">{phases.map((phase,index)=>{
       const relevant=events.filter(e=>phase.stages.includes(e.stage));
       const rejectedModel=relevant.findLast(e=>e.stage==='reasoner_completed'&&['rejected','unavailable'].includes(e.payload?.status));
       const event=rejectedModel||relevant.at(-1);
       const interrupted=['failed','cancelled'].includes(run?.status);
-      const active=event&&['external_search_started','spider_fetch','reasoner_started'].includes(event.stage)&&['running','queued'].includes(run?.status);
+      const active=event&&['external_search_started','spider_fetch','parallel_document_fetch','retrieval_started','reasoner_started'].includes(event.stage)&&['running','queued'].includes(run?.status);
       const problem=event&&(event.stage.includes('failed')||event.stage==='document_rejected'||['rejected','unavailable','partial'].includes(event.payload?.status));
       const status=problem?'Needs attention':active?'In progress':event?'Recorded':interrupted?'Not reached':'Not observed';
       return <article className={'workflow-step '+(problem?'attention':active?'working':event?'recorded':'pending')} key={phase.name}>

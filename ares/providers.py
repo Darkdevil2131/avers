@@ -56,11 +56,22 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 class EuropePMC:
+    concurrent_fulltext = True
     def __init__(self):
         self.lock = threading.Lock()
-        self.last_request = 0.0
+        self.pacing_lock = threading.Lock()
+        self.last_request = {'europe': 0.0, 'ncbi': 0.0}
         self.cache = {}
         self.opener = urllib.request.build_opener(NoRedirect())
+
+    def pace_request(self, provider):
+        # Serialize starts per provider, while allowing earlier requests to finish
+        # independently. The collector bounds simultaneous document tasks.
+        with self.pacing_lock:
+            delay = 1.0 - (time.monotonic() - self.last_request[provider])
+            if delay > 0:
+                time.sleep(delay)
+            self.last_request[provider] = time.monotonic()
 
     def search_titles(self, query):
         return self.search(query, require_titles=True)
@@ -79,10 +90,7 @@ class EuropePMC:
             if cached and time.monotonic() - cached[0] < 300:
                 records = copy.deepcopy(cached[1])
                 return (records, {'provider': 'Europe PMC', 'fallback_used': False}) if with_provenance else records
-            delay = 1.0 - (time.monotonic() - self.last_request)
-            if delay > 0:
-                time.sleep(delay)
-            self.last_request = time.monotonic()
+            self.pace_request('europe')
             params = urllib.parse.urlencode({"query": query, "format": "json",
                                               "pageSize": min(limit, 10), "resultType": "core"})
             request = urllib.request.Request(ENDPOINT + "?" + params, headers={"User-Agent": "ARES/0.2"})
@@ -129,30 +137,29 @@ class EuropePMC:
     def fulltext(self, pmcid):
         if not isinstance(pmcid,str) or not re.fullmatch(r"PMC[0-9]{1,12}",pmcid):
             raise ProviderError("Invalid PMC identifier")
-        with self.lock:
-            delay=1.0-(time.monotonic()-self.last_request)
-            if delay>0:time.sleep(delay)
-            self.last_request=time.monotonic()
-            url="https://www.ebi.ac.uk/europepmc/webservices/rest/"+pmcid+"/fullTextXML"
+        self.pace_request('europe')
+        url="https://www.ebi.ac.uk/europepmc/webservices/rest/"+pmcid+"/fullTextXML"
+        try:
+            with self.opener.open(urllib.request.Request(url,headers={"User-Agent":"ARES/0.3"}),timeout=15) as response:
+                raw=response.read(4_000_001)
+            return parse_jats(raw,pmcid)
+        except Exception as primary:
+            primary_attempt = fulltext_failure('Europe PMC', primary)
+            # An independent approved public API, not an arbitrary webpage scraper.
             try:
-                with self.opener.open(urllib.request.Request(url,headers={"User-Agent":"ARES/0.3"}),timeout=15) as response:
-                    raw=response.read(4_000_001)
-                return parse_jats(raw,pmcid)
-            except Exception as primary:
-                primary_attempt = fulltext_failure('Europe PMC', primary)
-                # An independent approved public API, not an arbitrary webpage scraper.
-                try:
-                    request=urllib.request.Request('https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/'+pmcid+'/unicode',headers={'User-Agent':'ARES/0.4'})
-                    with self.opener.open(request,timeout=20) as response:raw=response.read(4_000_001)
-                    result=parse_bioc(raw,pmcid)
-                    result['document']['primary_provider_error']=type(primary).__name__
-                    result['document']['fulltext_attempts'] = [primary_attempt, {'provider':'NCBI BioC','reason':'collected'}]
-                    return result
-                except Exception as fallback:
-                    attempts = [primary_attempt, fulltext_failure('NCBI BioC', fallback)]
-                    raise ProviderError('Full text could not be collected from either provider.', attempts=attempts) from fallback
+                self.pace_request('ncbi')
+                request=urllib.request.Request('https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/'+pmcid+'/unicode',headers={'User-Agent':'ARES/0.4'})
+                with self.opener.open(request,timeout=20) as response:raw=response.read(4_000_001)
+                result=parse_bioc(raw,pmcid)
+                result['document']['primary_provider_error']=type(primary).__name__
+                result['document']['fulltext_attempts'] = [primary_attempt, {'provider':'NCBI BioC','reason':'collected'}]
+                return result
+            except Exception as fallback:
+                attempts = [primary_attempt, fulltext_failure('NCBI BioC', fallback)]
+                raise ProviderError('Full text could not be collected from either provider.', attempts=attempts) from fallback
 
     def ncbi_search(self,query,limit):
+        self.pace_request('ncbi')
         params=urllib.parse.urlencode({'db':'pmc','term':query+' AND open access[filter]','retmode':'json','retmax':min(limit,10)})
         try:
             request=urllib.request.Request('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?'+params,headers={'User-Agent':'ARES/0.4'})
