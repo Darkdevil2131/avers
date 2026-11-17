@@ -83,6 +83,7 @@ export function App() {
           const data = block.split('\n').find(line => line.startsWith('data: '));
           if (!data) continue;
           const item = JSON.parse(data.slice(6));
+          if (block.split('\n').includes('event: unavailable')) throw new Error(item.detail);
           if (item.id && item.id > latest) {
             latest = item.id;
             setEvents(items => [...items, item]);

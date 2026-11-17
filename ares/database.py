@@ -25,6 +25,17 @@ def ranked_passages_sql(matches, per_snapshot):
 
 class StorageBudget(Exception):
     pass
+
+
+class StorageUnavailable(Exception):
+    """The database cannot currently serve the request."""
+
+
+SQLITE_UNAVAILABLE = {
+    sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED, sqlite3.SQLITE_CANTOPEN,
+    sqlite3.SQLITE_IOERR, sqlite3.SQLITE_FULL, sqlite3.SQLITE_READONLY,
+    sqlite3.SQLITE_CORRUPT, sqlite3.SQLITE_NOTADB,
+}
 class AccessDenied(Exception):
     pass
 class Database:
@@ -44,14 +55,21 @@ class Database:
                 self.index_source(db, dict(row))
     @contextmanager
     def connect(self):
-        db = sqlite3.connect(self.path, timeout=15)
-        db.row_factory = sqlite3.Row
-        db.execute("PRAGMA foreign_keys=ON")
         try:
-            with db:
-                yield db
-        finally:
-            db.close()
+            db = sqlite3.connect(self.path, timeout=15)
+            try:
+                db.row_factory = sqlite3.Row
+                db.execute("PRAGMA foreign_keys=ON")
+                with db:
+                    yield db
+            finally:
+                db.close()
+        except sqlite3.Error as exc:
+            code = getattr(exc, "sqlite_errorcode", None)
+            if code is not None and (code & 0xff) in SQLITE_UNAVAILABLE:
+                raise StorageUnavailable() from exc
+            raise
+
     def authorize(self, db, project_id, user, write=False, owner=False):
         row = db.execute(
             "SELECT role FROM memberships WHERE project_id=? AND username=?", (project_id, user)
