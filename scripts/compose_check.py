@@ -20,6 +20,9 @@ assert runtime['reasoning']==['not_configured']
 project=request('/projects',{'name':'Compose end-to-end fixture'})['id']
 text='Humidity reduced coating stability by 20% in a controlled synthetic experiment. This is test data, not scientific evidence.'
 source=request(f'/projects/{project}/sources',{'url':'https://example.org/compose-fixture','text':text,'license_status':'synthetic fixture'})
+other_text='Humidity increased coating stability by 10% in a separate controlled synthetic experiment.'
+other=request(f'/projects/{project}/sources',{'url':'https://example.org/compose-comparison','text':other_text,'license_status':'synthetic fixture'})
+originals={source['id']:text,other['id']:other_text}
 run=request(f'/projects/{project}/runs',{'question':'How does humidity affect coating stability?','external':False})['id']
 for _ in range(90):
     state=request(f'/projects/{project}/runs/{run}')
@@ -31,9 +34,10 @@ report=request(f'/projects/{project}/runs/{run}/report')
 assert report['assessment']=='inconclusive' and report['calibrated'] is False
 assert report['citations'] and report['findings']
 for cite in report['citations']:
-    assert cite['source_id']==source['id']
-    assert cite['quote']==text[cite['start_offset']:cite['end_offset']]
-    assert cite['digest']==hashlib.sha256(text.encode()).hexdigest()
+    original=originals[cite['source_id']]
+    assert cite['quote']==original[cite['start_offset']:cite['end_offset']]
+    assert cite['digest']==hashlib.sha256(original.encode()).hexdigest()
+assert {item['source_id'] for item in report['evidence_comparison']['observations']}==set(originals)
 assert report['reasoner']['status']=='unavailable',report['reasoner']
 events=request(f'/projects/{project}/runs/{run}/events')
 assert {'queued','plan','memory_retrieval','audit','report'}<={e['stage'] for e in events}

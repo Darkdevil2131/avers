@@ -2,14 +2,19 @@ import json
 import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor
+from time import perf_counter
 from .database import now
 from .evidence import reviewed_finding_contexts, snapshot_reviewed_claim
 from .collection import EvidenceCollector, evidence_signals, follow_up
 from .retrieval import hybrid_search
-from .agents import plan, extract, critique, propose, propose_exposure_test, proposal_critic
+from .agents import (
+    critique, extract_for_report as extract, plan, propose, propose_exposure_test, proposal_critic,
+)
 from uuid import uuid4
 from .local_reasoner import suggest
 from .prior_art import screen_prior_art, search_prior_art
+from .study_identifiers import compare_evidence
 STAGES = (
     {"id": "plan", "requires": [], "tool": "plan"},
     {"id": "retrieve", "requires": ["plan"], "tool": "project_search"},
@@ -62,11 +67,11 @@ class ResearchEngine:
                     return [dbs.add_source(db, run["project_id"], record, "research_worker")["id"]
                             for record in records]
 
-            def assess_passages():
+            def retrieve_passages():
                 event("retrieval_started", {})
                 with dbs.connect() as db:
                     db.execute("BEGIN IMMEDIATE")
-                    passages,retrieval = hybrid_search(dbs, db, run["project_id"], run["question"])
+                    passages,retrieval = hybrid_search(dbs, db, run["project_id"], run["question"], diversify=True)
                     citations = []
                     pdf_documents = {}
                     for passage in passages:
@@ -88,6 +93,10 @@ class ResearchEngine:
                                 if item["start"] < passage["end_offset"] and passage["start_offset"] < item["end"]
                             ]
                         citations.append(citation)
+                return citations, retrieval
+
+            def assess_passages(retrieved=None):
+                citations, retrieval = retrieve_passages() if retrieved is None else retrieved
                 findings = extract(citations, run["question"])
                 with dbs.connect() as db:
                     contexts = reviewed_finding_contexts(db, run["project_id"], findings)
@@ -95,13 +104,45 @@ class ResearchEngine:
 
             collector = EvidenceCollector(self.provider, store_sources, event, stopped, bool(claimed["external"]))
             collection = collector.audit
-            if claimed["external"]:
+            parallel_work = None
+            if claimed["external"] and not stopped():
                 event("external_search_started", {"provider": "Europe PMC"})
-                collector.collect("primary_evidence", run["question"], "Collect primary literature for the question.", 2)
+                timing = {}
 
-            if no_longer_owned():
-                return False
-            citations, retrieval, findings, criticism = assess_passages()
+                def discover_primary():
+                    started = perf_counter()
+                    try:
+                        return collector.discover(run["question"])
+                    finally:
+                        timing["literature_discovery"] = (started, perf_counter())
+
+                # Only the remote lookup is delegated. The coordinator keeps the
+                # authenticated database context and owns all storage and events.
+                with ThreadPoolExecutor(max_workers=1) as discovery_pool:
+                    discovery = discovery_pool.submit(discover_primary)
+                    started = perf_counter()
+                    initial = retrieve_passages()
+                    timing["project_evidence"] = (started, perf_counter())
+                    collector.collect("primary_evidence", run["question"],
+                                      "Collect primary literature for the question.", 2,
+                                      discovery=discovery.result)
+                remote_start, remote_end = timing["literature_discovery"]
+                local_start, local_end = timing["project_evidence"]
+                overlap = max(0, min(remote_end, local_end) - max(remote_start, local_start))
+                parallel_work = {
+                    "literature_discovery_ms": round((remote_end - remote_start) * 1000, 2),
+                    "project_evidence_ms": round((local_end - local_start) * 1000, 2),
+                    "overlap_ms": round(overlap * 1000, 2),
+                }
+                event("research_branches_joined", parallel_work)
+                if no_longer_owned():
+                    return False
+                refresh = collection["fulltext_stored"] and not stopped()
+                citations, retrieval, findings, criticism = assess_passages(None if refresh else initial)
+            else:
+                if no_longer_owned():
+                    return False
+                citations, retrieval, findings, criticism = assess_passages()
             if claimed["external"]:
                 before = evidence_signals(findings, citations, criticism)
                 choice = follow_up(run["question"], before) if callable(getattr(self.provider, "fulltext", None)) else None
@@ -176,7 +217,15 @@ class ResearchEngine:
             for proposal in proposals:
                 proposal["prior_art"] = screen_prior_art(
                     proposal, run["question"], citations, collector.records + related_records, collection, prior_search)
-            criticism['rejected_proposals']=rejected
+            criticism['rejected_proposals'] = rejected
+            comparison = compare_evidence(findings, citations)
+            count = comparison["study_identifiers"]
+            if count >= 2:
+                summary = f"Found candidate observations across {count} distinct source groups. Compare the cited results and conditions below."
+            elif count == 1:
+                summary = "Only one source group supplied an extractable observation. Corroborating evidence is still needed."
+            else:
+                summary = "No substantive observation was extracted for this question."
             with dbs.connect() as db:
                 db.execute("BEGIN IMMEDIATE")
                 # Lock and fence the final transaction against cancellation and lease recovery.
@@ -200,8 +249,9 @@ class ResearchEngine:
                     "run_id": run_id, "question": run["question"], "retrieval":retrieval, "collection": collection,
                     "reasoner":{k:v for k,v in inference.items() if k!="proposals"},"findings":findings,"critique":criticism,"hypotheses":proposals,"plan":plan(run["question"]),
                     "assessment": assessment, "calibrated": False,
-                    "summary": inference.get("answer") or ("Extracted observations: " + " ".join(f["statement"] for f in findings[:3]) if findings else "Relevant passages were retrieved for review." if citations else "The available project sources contain no matching passages."),
-                    "summary_status": "exact source extract selected by local model" if inference.get("answer") else "extractive",
+                    "summary": summary,
+                    "summary_status": "evidence coverage",
+                    "evidence_comparison": comparison,
                     "citations": citations,
                     "limitations": [
                         "Lexical retrieval establishes relevance only.",
@@ -220,6 +270,8 @@ class ResearchEngine:
                     "revision": revision.lower() if re.fullmatch(r"[a-fA-F0-9]{40}", revision) else None,
                     "attempt": claimed["attempts"], "external_collection_requested": bool(claimed["external"]),
                     "planner_policy": "context-aware-follow-up-v2",
+                    "finding_selection": "study-diverse-v1",
+                    "parallel_work": parallel_work,
                 }
                 if any(f['method'] == 'context-weighted-sentence-reranker-v2' for f in findings):
                     from .retrieval import DENSE, RERANKER_MODEL
@@ -230,6 +282,11 @@ class ResearchEngine:
                     report["reviewed_claim"] = reviewed_claim
                 lines = ["# Research evidence report", "", run["question"], "",
                          f"Assessment — {assessment}", "", report["summary"], ""]
+                if comparison['observations']:
+                    lines += ['## Evidence across sources', '', comparison['scope'], '']
+                    lines += [f"- [{item['citation']}] {item['title']}: {item['quote']}"
+                              for item in comparison['observations']]
+                    lines += ['']
                 lines += ['## Source collection', '',
                           'Status: ' + collection['status'],
                           f"Metadata records: {collection['metadata_records']}; full texts stored: {collection['fulltext_stored']}; full texts attempted: {collection['fulltext_attempted']}",

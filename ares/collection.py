@@ -86,7 +86,15 @@ class EvidenceCollector:
         self.seen = set()
         self.references = []
 
-    def collect(self, strategy, query, reason, fetch_limit):
+    def discover(self, query):
+        """Discover metadata without mutating the project or writing events."""
+        search = getattr(self.provider, 'search_with_provenance', None)
+        if callable(search):
+            found, provenance = search(query)
+            return list(found), provenance
+        return list(self.provider.search(query)), {}
+
+    def collect(self, strategy, query, reason, fetch_limit, *, discovery=None):
         if self.stopped():
             self.audit['bounded'] = True
             return
@@ -95,13 +103,8 @@ class EvidenceCollector:
         self.audit['queries'].append(entry)
         search_succeeded = True
         try:
-            search_with_provenance = getattr(self.provider, 'search_with_provenance', None)
-            if callable(search_with_provenance):
-                found, provenance = search_with_provenance(query)
-                records = list(found)
-                entry.update(provenance)
-            else:
-                records = list(self.provider.search(query))
+            records, provenance = self.discover(query) if discovery is None else discovery()
+            entry.update(provenance)
         except ProviderError as exc:
             search_succeeded = False
             message = str(exc)[:300]

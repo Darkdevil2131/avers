@@ -10,6 +10,19 @@ from .report_export import export_markdown
 STOPWORDS = set("a an the is are does do of for and or to in on with how what which can this that by from".split())
 def now():
     return datetime.now(timezone.utc).isoformat()
+def ranked_passages_sql(matches, per_snapshot):
+    if not per_snapshot:
+        return matches + " ORDER BY rank, p.id LIMIT ?"
+    # Materialize the FTS scores before applying the window (SQLite BM25
+    # requires its full-text cursor). Group identical snapshots by their hash.
+    return f"""WITH matches AS MATERIALIZED ({matches}),
+              ranked AS (
+                  SELECT matches.*, row_number() OVER (PARTITION BY digest ORDER BY rank, id) AS snapshot_rank
+                  FROM matches
+              )
+              SELECT * FROM ranked WHERE snapshot_rank <= ? ORDER BY rank, id LIMIT ?"""
+
+
 class StorageBudget(Exception):
     pass
 class AccessDenied(Exception):
@@ -85,7 +98,7 @@ class Database:
         self.index_source(db, source)
         self.audit(db, project_id, actor, "source_ingested", {"source_id": source["id"], "digest": digest})
         return source
-    def search(self, db, project_id, question, limit=8):
+    def search(self, db, project_id, question, limit=8, *, per_snapshot=None):
         terms = list(dict.fromkeys(
             t.lower() for t in re.findall(r"\w+", question, flags=re.UNICODE)
             if len(t) > 2 and t.lower() not in STOPWORDS
@@ -93,7 +106,7 @@ class Database:
         if not terms:
             return []
         query = " OR ".join(f'"{term}"' for term in terms)
-        rows = db.execute("""
+        matches = """
             SELECT p.*, s.url, s.digest, s.license_status, s.created_at AS retrieved_at,
                    coalesce(d.title,s.url) AS title, coalesce(d.study_id,s.url) AS study_id,
                    coalesce(d.origin,'user_supplied') AS origin,
@@ -105,8 +118,9 @@ class Database:
             LEFT JOIN source_details d ON d.source_id=s.id
             WHERE passage_search MATCH ? AND p.project_id=?
               AND coalesce((SELECT status FROM source_reviews WHERE source_id=s.id ORDER BY id DESC LIMIT 1),'active')='active'
-            ORDER BY rank,p.id LIMIT ?
-        """, (query, project_id, limit)).fetchall()
+        """
+        parameters = (query, project_id, per_snapshot, limit) if per_snapshot else (query, project_id, limit)
+        rows = db.execute(ranked_passages_sql(matches, per_snapshot), parameters).fetchall()
         return [dict(row) for row in rows]
     def run(self, db, project_id, run_id):
         row = db.execute("""

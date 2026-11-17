@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 import threading
 
+from .study_identifiers import diversify_evidence
+
 MODEL='sentence-transformers/all-MiniLM-L6-v2'
 RERANKER_MODEL='Xenova/ms-marco-MiniLM-L-6-v2'
 MAX_PASSAGES=10000
@@ -69,9 +71,14 @@ class DenseIndex:
 
 DENSE=DenseIndex()
 
-def _hybrid_search(storage,db,project_id,question,limit=8):
+def _hybrid_search(storage,db,project_id,question,limit=8, *, diversify=False):
     import numpy as np
-    lexical=storage.search(db,project_id,question,limit=40)
+    lexical=storage.search(db,project_id,question,limit=40,per_snapshot=3 if diversify else None)
+    def select(rows):
+        if not diversify:
+            return rows[:limit]
+        return [{key: value for key, value in row.items() if key != 'snapshot_rank'}
+                for row in diversify_evidence(rows, limit)]
     rows=[dict(r) for r in db.execute('''SELECT p.*,s.url,s.digest,s.license_status,s.created_at AS retrieved_at,
       coalesce(d.title,s.url) AS title,coalesce(d.study_id,s.url) AS study_id,coalesce(d.origin,'user_supplied') AS origin,
       coalesce((SELECT max(id) FROM source_reviews WHERE source_id=s.id),0) AS review_version
@@ -80,7 +87,7 @@ def _hybrid_search(storage,db,project_id,question,limit=8):
       ORDER BY p.id LIMIT 10001''',(project_id,))]
     if not rows:return [],{'mode':'hybrid','indexed_passages':0,'dense_available':False}
     if len(rows)>MAX_PASSAGES:
-        return lexical[:limit],{'mode':'lexical','reason':'Dense corpus limit exceeded (10000 passages)','dense_available':False}
+        return select(lexical),{'mode':'lexical','reason':'Dense corpus limit exceeded (10000 passages)','dense_available':False}
     try:
         DENSE.load()
         cache_model=MODEL+"@"+DENSE.artifact_hash
@@ -105,15 +112,21 @@ def _hybrid_search(storage,db,project_id,question,limit=8):
         if adjustments:query=query+.1*np.mean(adjustments,axis=0)
         matrix=np.asarray([np.frombuffer(cached[r['id']],dtype='<f4') for r in rows])
         similarity=(matrix@query)/(np.linalg.norm(matrix,axis=1)*np.linalg.norm(query)+1e-12)
-        order=np.argsort(-similarity)[:40]
-        dense=[dict(rows[i],semantic_similarity=float(similarity[i])) for i in order if similarity[i]>=0.20]
+        order = np.argsort(-similarity)
+        if diversify:
+            eligible = [dict(rows[i], semantic_similarity=float(similarity[i]))
+                        for i in order if similarity[i] >= 0.20]
+            dense = diversify_evidence(eligible, 40)
+        else:
+            dense = [dict(rows[i], semantic_similarity=float(similarity[i]))
+                     for i in order[:40] if similarity[i] >= 0.20]
         by_id={r['id']:r for r in rows};scores={}
         for ranking in (lexical,dense):
             for rank,r in enumerate(ranking,1):
                 scores[r['id']]=scores.get(r['id'],0)+1/(60+rank)
                 by_id[r['id']].update({k:v for k,v in r.items() if k in {'semantic_similarity','rank'}})
         results=[]
-        for pid in sorted(scores,key=lambda p:(-scores[p],p))[:24]:
+        for pid in sorted(scores,key=lambda p:(-scores[p],p))[:40 if diversify else 24]:
             results.append(dict(by_id[pid],retrieval_score=scores[pid]))
         reranked=False
         try:
@@ -122,9 +135,9 @@ def _hybrid_search(storage,db,project_id,question,limit=8):
             results.sort(key=lambda r:-r['rerank_score'])
             reranked=bool(results)
         except (ImportError,OSError,ValueError,RuntimeError):pass
-        return results[:limit],{'reviewed_feedback_used':len(adjustments),'reranked':reranked,'mode':'hybrid','dense_available':True,'model':MODEL,'model_sha256':DENSE.artifact_hash,'indexed_passages':len(rows),'fusion':'RRF k=60','similarity_is_truth_probability':False}
+        return select(results),{'reviewed_feedback_used':len(adjustments),'reranked':reranked,'mode':'hybrid','dense_available':True,'model':MODEL,'model_sha256':DENSE.artifact_hash,'indexed_passages':len(rows),'fusion':'RRF k=60','similarity_is_truth_probability':False}
     except (ImportError,OSError,ValueError,RuntimeError) as exc:
-        return lexical[:limit],{'mode':'lexical','dense_available':False,'reason':'Embedding model unavailable; run model preparation on the host','error_type':type(exc).__name__}
+        return select(lexical),{'mode':'lexical','dense_available':False,'reason':'Embedding model unavailable; run model preparation on the host','error_type':type(exc).__name__}
 
 
 def expand_passages(db,passages):
@@ -144,6 +157,8 @@ def expand_passages(db,passages):
         result.append(dict(passage,retrieved_start_offset=passage['start_offset'],retrieved_end_offset=passage['end_offset'],start_offset=start,end_offset=end,text=text[start:end]))
     return result
 
-def hybrid_search(storage,db,project_id,question,limit=8):
-    passages,details=_hybrid_search(storage,db,project_id,question,limit)
+def hybrid_search(storage,db,project_id,question,limit=8, *, diversify=False):
+    passages,details=_hybrid_search(storage,db,project_id,question,limit,diversify=diversify)
+    if diversify:
+        details['selection_policy'] = 'study-diverse-v1'
     return expand_passages(db,passages),dict(details,passage_boundaries='bounded-sentence-expansion-v1')

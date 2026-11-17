@@ -2,7 +2,7 @@ import re
 from collections import Counter
 from .evidence import compare_reviewed_findings
 from .exposure import compare_exposure, extract_exposure
-from .study_identifiers import study_identifier
+from .study_identifiers import diversify_evidence, evidence_identity, study_identifier
 from .text_spans import sentence_spans
 WORDS=re.compile(r'[A-Za-z][A-Za-z-]{2,}')
 STOP=set('the and with from that this were was are for not but study studies results effect effects'.split())
@@ -18,7 +18,7 @@ def plan(question):
                          {'action':'check_context_and_counterevidence','reason':'Matching text alone cannot establish a scientific conclusion'}],
             'budgets':{'search_requests':2,'fulltext_documents':4,'citation_depth':1,'passages':8,'deadline_seconds':180},
             'planner':'explicit-policy-v1','general_reasoning_model':False}
-def extract(citations,question):
+def extract(citations,question, *, diversify=False):
     """Extract candidates verbatim; no generated claims or guessed study attributes."""
     findings=[];q=terms(question)
     seen=set()
@@ -54,10 +54,22 @@ def extract(citations,question):
     except (ImportError,OSError,ValueError,RuntimeError):
         findings=[f for f in findings if DIRECTION.search(f['statement'])]
     # Keep a small review queue; scores measure relevance, never entailment/truth.
-    selected = findings[:3]
+    if diversify:
+        by_label = {citation['label']: citation for citation in citations}
+        # The citation's digest identifies exact copies even with different URLs.
+        ranked = [dict(item, digest=by_label[item['citation']].get('digest')) for item in findings]
+        selected = diversify_evidence(ranked, 3, identity=lambda item: evidence_identity(by_label[item['citation']]))
+        for finding in selected:
+            finding.pop('digest')
+    else:
+        selected = findings[:3]
     for finding in selected:
         finding['reported_exposure'] = extract_exposure(finding['statement'], finding['start_offset'])
     return selected
+
+def extract_for_report(citations, question):
+    return extract(citations, question, diversify=True)
+
 
 def critique(findings,citations,reviewed_contexts=None):
     pairs=[]

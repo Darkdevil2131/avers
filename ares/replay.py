@@ -52,6 +52,11 @@ def replay_markdown(bundle):
         source = sources[finding['source_id']]['text']
         if source[start:end] != finding['statement']:
             raise ValueError('Archived finding does not match its source span.')
+    if 'evidence_comparison' in report:
+        from .study_identifiers import compare_evidence
+        expected = compare_evidence(report['findings'], report['citations'])
+        if report['evidence_comparison'] != expected:
+            raise ValueError('Archived comparison does not match the verified findings.')
     return export_markdown(bundle['saved_markdown'], report, [])
 
 
@@ -63,7 +68,8 @@ def verify_findings(bundle):
 
     report = bundle['report']
     original = report.get('findings', [])
-    rerun = extract(report['citations'], report['question'])
+    rerun = extract(report['citations'], report['question'],
+                    diversify=(report.get('execution') or {}).get('finding_selection') == 'study-diverse-v1')
     fields = ('citation', 'source_id', 'statement', 'start_offset', 'end_offset', 'method')
     saved = [{key: item[key] for key in fields} for item in original]
     current = [{key: item[key] for key in fields} for item in rerun]

@@ -15,6 +15,7 @@ const STAGES = {
   reasoner_started: 'Preparing local reasoning', reasoner_completed: 'Local reasoning finished', planner_decision: 'Research strategy adjusted', queued: 'Research queued', plan: 'Research plan created',
   external_search_started: 'Searching Europe PMC',
   spider_fetch: 'Fetching open-access document', document_ingested: 'Full text stored', document_rejected: 'Document unavailable or license rejected', memory_retrieval: 'Retrieving project evidence', extract: 'Extracting candidate findings', critic: 'Checking evidence limits', hypothesize: 'Proposing follow-up tests', external_search_completed: 'Metadata received', external_search_failed: 'Source unavailable',
+  research_branches_joined: 'Project and literature searches joined',
   retrieval_started: 'Searching project evidence', retrieve: 'Project passages retrieved', audit: 'Citation spans checked',
   report: 'Report saved', failed: 'Research failed', cancelled: 'Research cancelled',
 };
@@ -255,6 +256,14 @@ export function App() {
                 {report.review_links_changed && <p className="warning">Reviewed evidence was added after this assessment. Start a new run to include it.</p>}
                 <h3>{report.question}</h3>{report.summary_status && <small>{report.summary_status}</small>}<p>{report.summary}</p>{report.reasoner && <p>Local reasoning: {report.reasoner.status}{report.reasoner.reason ? ' — ' + report.reasoner.reason : ''}</p>}{report.reasoner?.retry && <p>One model correction attempt followed a potential opposition. The result requires scientific review.</p>}
                 {report.reviewed_claim && <ReviewedClaim claim={report.reviewed_claim}/>}
+                {report.evidence_comparison?.observations.length > 0 && <section aria-label="Evidence across sources">
+                  <h3>Evidence across sources</h3>
+                  <p>{report.evidence_comparison.scope}</p>
+                  {report.evidence_comparison.observations.map(item => <article className="citation" key={item.citation}>
+                    <span>[{item.citation}] {item.title}</span>
+                    <blockquote>{item.quote}</blockquote>
+                  </article>)}
+                </section>}
                 {report.retrieval && <p className="warning">Retrieval: {report.retrieval.mode} · {report.retrieval.dense_available ? 'Dense embeddings + keyword search' : report.retrieval.reason || 'No indexed passages'}</p>}
                 {report.collection && <section aria-label="Source collection"><h3>Source collection</h3>
                   <p>Status: {report.collection.status.replaceAll('_', ' ')} · {report.collection.metadata_records} metadata records · {report.collection.fulltext_stored} full texts stored</p>

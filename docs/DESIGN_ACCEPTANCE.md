@@ -95,3 +95,26 @@ designated unmatched candidate in both cases. This verifies behavior on a
 controlled provider response, not field performance, source independence,
 scientific comparability, or gains on a held-out corpus. Independently labeled
 materials studies and measured live retrieval remain required.
+
+### Multi-source answers and parallel research
+
+A single worker coordinates two tasks for runs with literature collection
+enabled. The network task discovers public metadata while project RAG searches
+the database. The worker joins the tasks, stores eligible sources, and refreshes
+the evidence after full-text collection. Analysis, follow-up query selection,
+and report publication depend on those results and remain ordered. A failed
+metadata search leaves the project results available. The run records each
+initial task's duration and their actual overlap in milliseconds. This overlap
+is not a measure of whole-run speedup. Work is concurrent inside the worker,
+and no other machine or paid service is required.
+
+In research runs, the keyword shortlist limits passages per exact source
+snapshot, dense retrieval prioritizes different study identifiers before
+reranking, and extraction prefers observations from different study identifiers
+or snapshots. The report's evidence comparison includes a cited excerpt for
+each represented source group. Exact copies do not count twice. One source
+group is disclosed as needing corroboration. Distinct identifiers do not
+establish independent experiments or validate any apparent disagreement.
+The optional local model can propose a hypothesis but cannot replace the
+cross-source answer with a single extract. New replay bundles verify the
+comparison against the archived findings and rerun the correct selection policy.
