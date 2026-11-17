@@ -144,3 +144,21 @@ def test_document_tasks_overlap_and_store_success_when_sibling_fails():
     assert len(stored) == 1
     assert collector.references == [('PMC3', 1)]
     assert ('parallel_document_fetch', {'documents': ['PMC1', 'PMC2']}) in recorded
+
+
+def test_explicit_condition_question_excludes_topical_excerpt_without_values(tmp_path):
+    api = client(tmp_path)
+    pid = project(api)
+    matched = add(api, pid, 'methods',
+                  'Coating stability increased after the samples were conditioned at 25 °C and 60% RH.')
+    add(api, pid, 'topical', 'The coating stability decreased when the conditioning temperature and relative humidity changed.')
+    add(api, pid, 'wrong-stage', 'Coating stability increased when samples were tested at 25 °C and 60% RH.')
+    question = 'What conditioning temperature and relative humidity were used for coating stability testing?'
+    rid = api.post(f'/projects/{pid}/runs', json={'question': question}).raise_for_status().json()['id']
+    report = api.get(f'/projects/{pid}/runs/{rid}/report').raise_for_status().json()
+    assert len(report['findings']) == 3
+    comparison = report['evidence_comparison']
+    assert comparison['required_conditions'] == ['temperature', 'relative_humidity']
+    assert comparison['required_stage'] == 'conditioning'
+    assert comparison['status'] == 'single_source_candidate'
+    assert comparison['observations'][0]['source_id'] == matched['id']

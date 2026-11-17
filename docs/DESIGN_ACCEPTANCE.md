@@ -121,3 +121,9 @@ establish independent experiments or validate any apparent disagreement.
 The optional local model can propose a hypothesis but cannot replace the
 cross-source answer with a single extract. New replay bundles verify the
 comparison against the archived findings and rerun the correct selection policy.
+
+For explicitly worded requests for temperature and relative humidity values,
+the answer comparison requires both values in the same excerpt and checks the
+named stage, such as conditioning. Topical excerpts and values from a different
+stage stay available as candidates for review. The requirement applies to this
+supported question form and does not infer unstated values.

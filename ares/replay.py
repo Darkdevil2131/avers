@@ -54,7 +54,7 @@ def replay_markdown(bundle):
             raise ValueError('Archived finding does not match its source span.')
     if 'evidence_comparison' in report:
         from .study_identifiers import compare_evidence
-        expected = compare_evidence(report['findings'], report['citations'])
+        expected = compare_evidence(report['findings'], report['citations'], report['question'])
         if report['evidence_comparison'] != expected:
             raise ValueError('Archived comparison does not match the verified findings.')
     return export_markdown(bundle['saved_markdown'], report, [])

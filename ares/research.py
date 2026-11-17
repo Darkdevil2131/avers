@@ -218,12 +218,14 @@ class ResearchEngine:
                 proposal["prior_art"] = screen_prior_art(
                     proposal, run["question"], citations, collector.records + related_records, collection, prior_search)
             criticism['rejected_proposals'] = rejected
-            comparison = compare_evidence(findings, citations)
+            comparison = compare_evidence(findings, citations, run["question"])
             count = comparison["study_identifiers"]
             if count >= 2:
                 summary = f"Found candidate observations across {count} distinct source groups. Compare the cited results and conditions below."
             elif count == 1:
                 summary = "Only one source group supplied an extractable observation. Corroborating evidence is still needed."
+            elif comparison["required_conditions"]:
+                summary = "No extracted observation stated both requested conditions. Review the cited methods or add more evidence."
             else:
                 summary = "No substantive observation was extracted for this question."
             with dbs.connect() as db:
